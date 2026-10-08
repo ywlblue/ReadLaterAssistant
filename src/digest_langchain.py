@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import get_args
 
 from dotenv import load_dotenv
 from langchain.schema.runnable import RunnableParallel
@@ -7,7 +8,9 @@ from langchain.prompts import PromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_openai import ChatOpenAI
 
-CONTENT_TYPES = ["article", "tutorial", "news", "paper", "other"]
+from schemas import ContentType
+
+CONTENT_TYPES = list(get_args(ContentType))
 
 SUMMARY_TEMPLATE = ("Summarize the following article in exactly {num_sentences} sentences.\n"
                     "Article: {article}")

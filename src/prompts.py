@@ -1,4 +1,8 @@
-CONTENT_TYPES = ["article", "tutorial", "news", "paper", "other"]
+from typing import get_args
+
+from schemas import ContentType
+
+CONTENT_TYPES = list(get_args(ContentType))
 
 SUMMARY_TEMPLATE = "Summarize the article in exactly {num_sentences} sentences."
 
