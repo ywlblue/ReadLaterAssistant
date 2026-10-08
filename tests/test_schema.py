@@ -1,6 +1,6 @@
 import pytest
 
-from src.schemas import DigestParseError, SavedItemDigest, parse_digest
+from schemas import DigestParseError, SavedItemDigest, parse_digest
 
 GOOD = '{"summary": "A. B.", "tags": ["ai", "python", "llm"], "content_type": "article"}'
 
