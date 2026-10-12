@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>How SQLite Stores Rows</title>
+  <style>body { font-family: sans-serif; }</style>
+  <script>console.log("tracking code that must not be saved");</script>
+</head>
+<body>
+  <nav>Home | Blog | About | Subscribe</nav>
+  <article>
+    <h1>How SQLite Stores Rows</h1>
+    <p>SQLite keeps every table in a B-tree. Each row has a 64-bit row ID, and the rows are stored in the leaf pages of that tree, sorted by row ID.</p>
+    <p>When a page fills up, SQLite splits it into two pages and updates the parent. This is why inserts stay fast even when the table grows to millions of rows.</p>
+    <p>中文也要能正常保存：这一段用来检查编码。</p>
+  </article>
+  <footer>Copyright 2026 Example Blog. All rights reserved.</footer>
+</body>
+</html>

@@ -1,5 +1,6 @@
 import os
 import sqlite3
+from fetch import FetchResult
 from datetime import datetime, timezone
 
 from urls import domain_of, make_item_id, normalize_url
@@ -49,3 +50,18 @@ def save_item(conn: sqlite3.Connection, url: str):
 def count_items(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM saved_items").fetchone()[0]
 
+
+def record_fetch(conn: sqlite3.Connection, item_id: str, result: FetchResult):
+    if result.ok:
+        conn.execute(
+            "UPDATE saved_items SET title = ?, content_text = ?, status = 'fetched', error = NULL "
+            "WHERE id = ?",
+            (result.title, result.text, item_id)
+        )
+    else:
+        conn.execute(
+            "UPDATE saved_items SET status = 'fetch_failed', error = ? WHERE id = ?",
+            (result.error, item_id),
+        )
+    conn.commit()
+    return conn.execute("SELECT * FROM saved_items WHERE id = ?", (item_id,)).fetchone()
