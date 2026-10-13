@@ -1,0 +1,112 @@
+{
+  "run_at": "2026-10-13T02:24:24.613430+00:00",
+  "config": {
+    "model": "gpt-4o",
+    "prompt": "digest_prompt(min_tags=3, max_tags=5)",
+    "price_input_per_m": 2.5,
+    "price_output_per_m": 10.0
+  },
+  "totals": {
+    "items": 5,
+    "valid": 5,
+    "avg_latency_s": 1.63,
+    "total_cost_usd": 0.038833
+  },
+  "items": [
+    {
+      "item_id": "6cea50785060c83c",
+      "url": "https://www.scientificamerican.com/article/could-tutankhamuns-tomb-hold-clues-to-a-mysterious-egyptian-queen/",
+      "chars": 9319,
+      "latency_s": 2.21,
+      "input_tokens": 1892,
+      "output_tokens": 76,
+      "cost_usd": 0.00549,
+      "ok": true,
+      "summary": "Researchers are investigating potential hidden chambers in Tutankhamun's tomb that may hold the burial place of Nefertiti. Recent geophysical studies suggest concealed structures, but direct testing is needed to confirm their existence.",
+      "tags": [
+        "archaeology",
+        "egypt",
+        "nefertiti",
+        "tutankhamun",
+        "geophysics"
+      ],
+      "content_type": "article"
+    },
+    {
+      "item_id": "4338a0684b4cd642",
+      "url": "https://lethain.com/introduction-to-architecting-systems-for-scale/",
+      "chars": 17211,
+      "latency_s": 1.93,
+      "input_tokens": 3643,
+      "output_tokens": 85,
+      "cost_usd": 0.009957,
+      "ok": true,
+      "summary": "This article discusses the principles of building scalable systems, focusing on load balancing, caching, off-line processing, and the benefits of a platform layer. It explores different strategies such as smart clients, hardware and software load balancers, and the use of caching mechanisms to enhance performance and scalability.",
+      "tags": [
+        "scalability",
+        "load balancing",
+        "caching",
+        "system architecture",
+        "platform layer"
+      ],
+      "content_type": "article"
+    },
+    {
+      "item_id": "a0641f57db6cee8a",
+      "url": "https://www.nature.com/articles/d41586-026-03224-7",
+      "chars": 8595,
+      "latency_s": 1.2,
+      "input_tokens": 1931,
+      "output_tokens": 74,
+      "cost_usd": 0.005568,
+      "ok": true,
+      "summary": "James Marriott's book, 'The New Dark Ages', explores the decline of book reading in a technologically driven society, arguing it threatens rational thought and democracy. Despite the rise of distractions like smartphones, reading remains crucial for deep intellectual engagement and personal enrichment.",
+      "tags": [
+        "reading",
+        "literacy",
+        "technology",
+        "culture",
+        "society"
+      ],
+      "content_type": "article"
+    },
+    {
+      "item_id": "1e2db47d258dd52e",
+      "url": "https://techcrunch.com/2026/10/12/meta-releases-its-first-frontier-model-muse-wonder/",
+      "chars": 3714,
+      "latency_s": 1.31,
+      "input_tokens": 918,
+      "output_tokens": 87,
+      "cost_usd": 0.003165,
+      "ok": true,
+      "summary": "Meta's Superintelligence Lab has introduced new state-of-the-art models, Muse Wonder and Muse Wonder Full, which demonstrate higher benchmark scores and advanced capabilities such as coding and memory retention. These models reflect Meta's scaling strategy and are priced competitively, with Wonder Full exclusively available to Muse Code subscribers.",
+      "tags": [
+        "ai models",
+        "meta",
+        "superintelligence",
+        "frontier models",
+        "technology"
+      ],
+      "content_type": "news"
+    },
+    {
+      "item_id": "4070b954877848ae",
+      "url": "https://www.databricks.com/blog/biomedical-imagings-real-bottleneck-data-not-model",
+      "chars": 25561,
+      "latency_s": 1.5,
+      "input_tokens": 5493,
+      "output_tokens": 92,
+      "cost_usd": 0.014653,
+      "ok": true,
+      "summary": "The article discusses how the true challenge in medical imaging AI lies in establishing a strong data foundation rather than improving models, emphasizing the importance of governing and linking imaging data to multiple healthcare data sources. It highlights the need for centralized data governance, de-identification, and cross-institution collaboration to create models that generalize beyond individual sites.",
+      "tags": [
+        "medical imaging",
+        "ai",
+        "data governance",
+        "healthcare",
+        "collaboration"
+      ],
+      "content_type": "article"
+    }
+  ]
+}

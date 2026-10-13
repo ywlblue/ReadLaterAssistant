@@ -1,0 +1,91 @@
+{
+  "run_at": "2026-10-13T02:18:01.067559+00:00",
+  "config": {
+    "model": "gpt-4o",
+    "prompt": "digest_prompt(min_tags=3, max_tags=5)",
+    "price_input_per_m": 2.5,
+    "price_output_per_m": 10.0
+  },
+  "totals": {
+    "items": 5,
+    "valid": 2,
+    "avg_latency_s": 2.7,
+    "total_cost_usd": 0.039286
+  },
+  "items": [
+    {
+      "item_id": "6cea50785060c83c",
+      "url": "https://www.scientificamerican.com/article/could-tutankhamuns-tomb-hold-clues-to-a-mysterious-egyptian-queen/",
+      "chars": 9319,
+      "latency_s": 3.71,
+      "input_tokens": 1883,
+      "output_tokens": 97,
+      "cost_usd": 0.005678,
+      "ok": false,
+      "error": "invalid_json: Expecting value: line 1 column 1 (char 0)",
+      "raw_output": "```json\n{\n  \"summary\": \"Research indicates possible hidden chambers in Tutankhamun's tomb, potentially holding clues to Nefertiti's burial. Archaeologist Nicholas Reeves and others suggest further investigation is needed to substantiate these claims, balancing speculation with scientific methodology.\",\n  \"tags\": [\"ancient egypt\", \"archaeology\", \"tutankhamun\", \"nefertiti\", \"hidden chambers\"],\n  \"content_type\": \"article\"\n}\n```"
+    },
+    {
+      "item_id": "4338a0684b4cd642",
+      "url": "https://lethain.com/introduction-to-architecting-systems-for-scale/",
+      "chars": 17211,
+      "latency_s": 3.85,
+      "input_tokens": 3635,
+      "output_tokens": 90,
+      "cost_usd": 0.009987,
+      "ok": true,
+      "summary": "This post discusses the fundamentals of building scalable systems, focusing on load balancing, caching, and off-line processing, as learned from experiences at Yahoo and Digg. It highlights various methods and tools, such as HAProxy for load balancing and the use of smart clients, CDNs, and message queues for efficient system architecture.",
+      "tags": [
+        "scalability",
+        "load balancing",
+        "caching",
+        "architecture",
+        "systems"
+      ],
+      "content_type": "article"
+    },
+    {
+      "item_id": "a0641f57db6cee8a",
+      "url": "https://www.nature.com/articles/d41586-026-03224-7",
+      "chars": 8595,
+      "latency_s": 2.13,
+      "input_tokens": 1923,
+      "output_tokens": 98,
+      "cost_usd": 0.005788,
+      "ok": true,
+      "summary": "James Marriott's book, 'The New Dark Ages: The End of Reading and the Dawn of a Post-Literate Society,' explores the decline of reading in modern society and its implications on rational thought and democracy. Despite an increase in book publications, the author argues that the rise of technology and simpler reading materials are contributing to a decrease in literary engagement and critical thinking skills.",
+      "tags": [
+        "reading",
+        "literacy",
+        "technology",
+        "society",
+        "books"
+      ],
+      "content_type": "article"
+    },
+    {
+      "item_id": "1e2db47d258dd52e",
+      "url": "https://techcrunch.com/2026/10/12/meta-releases-its-first-frontier-model-muse-wonder/",
+      "chars": 3714,
+      "latency_s": 1.43,
+      "input_tokens": 909,
+      "output_tokens": 99,
+      "cost_usd": 0.003263,
+      "ok": false,
+      "error": "invalid_json: Expecting value: line 1 column 1 (char 0)",
+      "raw_output": "```json\n{\n    \"summary\": \"Meta's Superintelligence Lab has released Muse Wonder and Muse Wonder Full, two new frontier models designed to outperform previous iterations in benchmarks and complex tasks such as coding. These models feature enhanced active memory capabilities and are priced competitively, with Wonder Full being exclusively available to Muse Code subscribers.\",\n    \"tags\": [\"ai models\", \"meta\", \"superintelligence\", \"technology\", \"release\"],\n    \"content_type\": \"news\"\n}\n```"
+    },
+    {
+      "item_id": "4070b954877848ae",
+      "url": "https://www.databricks.com/blog/biomedical-imagings-real-bottleneck-data-not-model",
+      "chars": 25561,
+      "latency_s": 2.4,
+      "input_tokens": 5484,
+      "output_tokens": 86,
+      "cost_usd": 0.01457,
+      "ok": false,
+      "error": "invalid_json: Expecting value: line 1 column 1 (char 0)",
+      "raw_output": "```json\n{\n  \"summary\": \"Medical imaging AI underdelivers due to the siloed and complex nature of data rather than model deficiencies. A stronger data foundation that integrates and governs imaging data across institutions is essential for improving AI outcomes in healthcare sectors.\",\n  \"tags\": [\"medical imaging\", \"data governance\", \"AI\", \"healthcare\", \"data integration\"],\n  \"content_type\": \"article\"\n}\n```"
+    }
+  ]
+}
