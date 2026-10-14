@@ -4,7 +4,7 @@ import sys
 from dotenv import load_dotenv
 
 from fetch import fetch_url
-from storage import connect, count_items, record_fetch, save_item
+from storage import count_items, record_fetch, save_item, connect
 from urls import InvalidUrlError
 
 if len(sys.argv) != 2:

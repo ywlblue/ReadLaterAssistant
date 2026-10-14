@@ -1,9 +1,12 @@
 import os
 import sqlite3
+from typing import Optional
+
 from fetch import FetchResult
 from datetime import datetime, timezone
 
 from urls import domain_of, make_item_id, normalize_url
+from db import get_connection
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS saved_items (
@@ -21,12 +24,8 @@ CREATE TABLE IF NOT EXISTS saved_items (
 """
 
 
-def connect(db_path: str) -> sqlite3.Connection:
-    folder = os.path.dirname(db_path)
-    if folder:
-        os.makedirs(folder, exist_ok=True)
-    conn = sqlite3.connect(db_path)
-    conn.row_factory = sqlite3.Row
+def connect(db_path: Optional[str] = None) -> sqlite3.Connection:
+    conn = get_connection(db_path)
     conn.execute(SCHEMA)
     conn.commit()
     return conn
