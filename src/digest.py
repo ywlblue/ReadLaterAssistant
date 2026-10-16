@@ -1,37 +1,37 @@
-import os
+import logging
 import sys
-from dotenv import load_dotenv
-from openai import OpenAI
-from prompts import summary_prompt, digest_prompt
-from schemas import parse_digest, DigestParseError
 
-load_dotenv()
-client = OpenAI()
+from logging_config import setup_logging
+from model import get_response, LLMTimeOutException
+from prompts import digest_prompt
+from schemas import parse_digest, DigestParseError, SavedItemDigest
 
-
-def run(instructions, input_article):
-    response = client.responses.create(
-        model=os.environ["OPENAI_MODEL"],
-        instructions=instructions,
-        input=input_article,
-    )
-    return response.output_text
+logger = logging.getLogger(__name__)
 
 
-article = sys.stdin.read()
-print("=== ARTICLE ===")
-print(article)
-print("=== SUMMARY ===")
-print(run(summary_prompt(), article))
-print("=== DIGEST ===")
-raw = run(digest_prompt(), article)
-try:
-    digest = parse_digest(raw)
-    print(digest.summary)
-    print(digest.tags)
-    print(digest.content_type)
-except DigestParseError as e:
-    print(f"DIGEST FAILED ({e.reason}): {e.detail}")
-    print("--- raw output ---")
-    print(e.raw_output)
-    sys.exit(1)
+def digest(input_article: str, call_model=get_response) -> SavedItemDigest:
+    try:
+        raw_response = call_model(digest_prompt(), input_article)
+        return parse_digest(raw_response)
+    except LLMTimeOutException as timeout_err:
+        logger.log(
+            logging.ERROR,
+            str(timeout_err))
+        raise
+    except DigestParseError as parsing_err:
+        logger.log(
+            logging.ERROR,
+            f"DIGEST FAILED ({parsing_err.reason}): {parsing_err.detail}")
+        raise
+
+
+if __name__ == '__main__':
+    setup_logging()
+    article = sys.stdin.read()
+    print("=== ARTICLE ===")
+    print(article)
+    print("=== DIGEST ===")
+    result = digest(article)
+    print(f"Summary: {result.summary}")
+    print(f"Tags: {result.tags}")
+    print(f"Content Type: {result.content_type}")
