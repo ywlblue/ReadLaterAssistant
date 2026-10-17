@@ -5,6 +5,7 @@ from typing import Optional
 from fetch import FetchResult
 from datetime import datetime, timezone
 
+from schemas import SavedItemDigest
 from urls import domain_of, make_item_id, normalize_url
 from db import get_connection
 
@@ -31,6 +32,7 @@ def connect(db_path: Optional[str] = None) -> sqlite3.Connection:
     return conn
 
 
+# Save url related information
 def save_item(conn: sqlite3.Connection, url: str):
     normalized = normalize_url(url)
     item_id = make_item_id(normalized)
@@ -62,5 +64,19 @@ def record_fetch(conn: sqlite3.Connection, item_id: str, result: FetchResult):
             "UPDATE saved_items SET status = 'fetch_failed', error = ? WHERE id = ?",
             (result.error, item_id),
         )
+    conn.commit()
+    return conn.execute("SELECT * FROM saved_items WHERE id = ?", (item_id,)).fetchone()
+
+
+def record_digest(conn: sqlite3.Connection, item_id: str, result: Optional[SavedItemDigest],
+                  err_msg: Optional[str] = None):
+    conn.execute(
+        "UPDATE saved_items SET digest_json = ?, status = ?, error = ? "
+        "WHERE id = ?",
+        (result.model_dump_json() if result else None,
+         "digested" if not err_msg else "digest_failed",
+         err_msg
+         , item_id)
+    )
     conn.commit()
     return conn.execute("SELECT * FROM saved_items WHERE id = ?", (item_id,)).fetchone()

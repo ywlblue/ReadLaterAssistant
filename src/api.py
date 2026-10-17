@@ -6,10 +6,13 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from digest import digest
 from fetch import fetch_url
 from logging_config import setup_logging
+from model import LLMTimeOutException
+from schemas import SavedItemDigest, DigestParseError
 from urls import normalize_url, InvalidUrlError
-from storage import save_item, connect, record_fetch
+from storage import save_item, connect, record_fetch, record_digest
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -23,6 +26,7 @@ class SaveResponse(BaseModel):
     item_id: str
     url: str
     status: str
+    digest: Optional[SavedItemDigest] = None
     title: Optional[str] = None
     error: Optional[str] = None
 
@@ -56,22 +60,33 @@ def save_url(item: SaveRequest) -> SaveResponse:
         normalized_url = normalize_url(item.url)
         conn = connect()
         saved_item, created = save_item(conn, normalized_url)
+        result = saved_item
 
-        if saved_item["status"] != "fetched":
+        if not result["content_text"]:
             result = record_fetch(
                 conn,
-                saved_item["id"],
-                fetch_url(saved_item["url"]),
+                result["id"],
+                fetch_url(result["url"]),
             )
-        else:
-            result = saved_item
+
+        if not result["digest_json"] and result["content_text"]:
+            err_msg = None
+            summary = None
+            try:
+                summary = digest(result["content_text"])
+            except LLMTimeOutException:
+                err_msg = "llm_timeout"
+            except DigestParseError as parsing_err:
+                err_msg = parsing_err.reason
+            result = record_digest(conn, result["id"], summary, err_msg)
 
         log_data["item_status"] = result["status"]
-
+        saved_item_digest = SavedItemDigest.model_validate_json(result["digest_json"]) if result["digest_json"] else None
         response = SaveResponse(
             item_id=result["id"],
             url=result["url"],
             title=result["title"],
+            digest=saved_item_digest,
             status=result["status"],
             error=result["error"],
         )
