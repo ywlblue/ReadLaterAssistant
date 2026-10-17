@@ -5,20 +5,22 @@ import pytest
 from starlette.testclient import TestClient
 
 import api
-import db
+from fetch import FetchResult
 from schemas import DigestParseError, SavedItemDigest
+from storage import connect
 
 
 def test_save_empty_url(monkeypatch, tmp_path):
-    mock_connect = Mock()
-    monkeypatch.setattr(db, "DB_PATH", str(tmp_path / "t.db"))
+    conn = Mock()
+    monkeypatch.setattr(api, "connect", Mock(return_value=conn))
 
     with TestClient(api.app) as client:
         response = client.post("/save", json={"url": ""})
 
     assert response.status_code == 400
     assert response.json() == {"detail": "Missing URL"}
-    mock_connect.assert_not_called()
+
+    conn.assert_not_called()
 
 
 @pytest.fixture
@@ -135,7 +137,7 @@ def test_save_reuses_existing_digest(save_context):
     ctx.mock_fetch.assert_not_called()
 
 
-def test_save_llm_return_bad_json(monkeypatch):
+def test_save_llm_return_invalid_json(monkeypatch):
     conn = Mock()
 
     saved_item = {
@@ -151,14 +153,14 @@ def test_save_llm_return_bad_json(monkeypatch):
     failed_item = {
         **saved_item,
         "status": "digest_failed",
-        "error": "bad_json",
+        "error": "invalid_json",
     }
 
     mock_save = Mock(return_value=(saved_item, False))
     mock_fetch = Mock()
     mock_digest = Mock(
         side_effect=DigestParseError(
-            "bad_json",
+            "invalid_json",
             "LLM return invalid json",
             "This is a string",
         )
@@ -179,7 +181,7 @@ def test_save_llm_return_bad_json(monkeypatch):
 
     assert response.status_code == 200
     save_response = api.SaveResponse.model_validate_json(response.text)
-    assert save_response.error == "bad_json"
+    assert save_response.error == "invalid_json"
     assert save_response.title == "Test article"
     assert save_response.digest is None
 
@@ -187,8 +189,45 @@ def test_save_llm_return_bad_json(monkeypatch):
         conn,
         saved_item["id"],
         None,
-        "bad_json",
+        "invalid_json",
     )
     mock_save.assert_called_once_with(conn, saved_item["url"])
     mock_fetch.assert_not_called()
     mock_digest.assert_called_once_with(saved_item["content_text"])
+
+
+def test_save_content(monkeypatch, tmp_path):
+    fetch_result = FetchResult(True, "Hello World", "This is a text")
+
+    mock_fetch = Mock(return_value=fetch_result)
+    mock_digest = Mock(
+        side_effect=DigestParseError(
+            "bad_json",
+            "LLM return invalid json",
+            "This is a string",
+        )
+    )
+
+    # Return lambda for connection instead of using pre-initialized connection
+    monkeypatch.setattr(api, "connect", lambda: connect(str(tmp_path / "test.db")))
+    monkeypatch.setattr(api, "fetch_url", mock_fetch)
+    monkeypatch.setattr(api, "digest", mock_digest)
+
+    with TestClient(api.app) as client:
+        response = client.post("/save", json={"url": "https://example.com/article"})
+
+    assert response.status_code == 200
+    save_response = api.SaveResponse.model_validate_json(response.text)
+    assert save_response.error == "bad_json"
+    assert save_response.title == "Hello World"
+    assert save_response.digest is None
+
+    assert save_response.item_id is not None
+    saved_item = connect(str(tmp_path / "test.db")).execute("SELECT * FROM saved_items WHERE id = ?",
+                                                            (save_response.item_id,)).fetchone()
+    assert saved_item["content_text"] == "This is a text"
+    assert saved_item["status"] == "digest_failed"
+    mock_fetch.assert_called_once()
+
+
+

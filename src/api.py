@@ -57,9 +57,8 @@ def save_url(item: SaveRequest) -> SaveResponse:
         if not item.url:
             raise HTTPException(status_code=400, detail="Missing URL")
 
-        normalized_url = normalize_url(item.url)
         conn = connect()
-        saved_item, created = save_item(conn, normalized_url)
+        saved_item, created = save_item(conn, item.url)
         result = saved_item
 
         if not result["content_text"]:
