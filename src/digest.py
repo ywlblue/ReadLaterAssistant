@@ -11,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 def digest(input_article: str, call_model=get_response) -> SavedItemDigest:
     try:
-        raw_response = call_model(digest_prompt(), input_article)
+        text = f"Article:\n{input_article}\n\nReturn the digest as JSON."
+        raw_response = call_model(digest_prompt(), text, True)
         return parse_digest(raw_response)
     except LLMTimeOutException as timeout_err:
         logger.log(
