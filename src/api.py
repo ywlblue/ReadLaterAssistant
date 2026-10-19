@@ -11,8 +11,8 @@ from fetch import fetch_url
 from logging_config import setup_logging
 from model import LLMTimeOutException
 from schemas import SavedItemDigest, DigestParseError
-from urls import normalize_url, InvalidUrlError
 from storage import save_item, connect, record_fetch, record_digest
+from urls import InvalidUrlError
 
 setup_logging()
 logger = logging.getLogger(__name__)
@@ -80,7 +80,8 @@ def save_url(item: SaveRequest) -> SaveResponse:
             result = record_digest(conn, result["id"], summary, err_msg)
 
         log_data["item_status"] = result["status"]
-        saved_item_digest = SavedItemDigest.model_validate_json(result["digest_json"]) if result["digest_json"] else None
+        saved_item_digest = SavedItemDigest.model_validate_json(result["digest_json"]) \
+            if result["digest_json"] else None
         response = SaveResponse(
             item_id=result["id"],
             url=result["url"],
