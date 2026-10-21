@@ -4,7 +4,7 @@ import sys
 from dotenv import load_dotenv
 
 from fetch import fetch_url
-from storage import count_items, record_fetch, save_item, connect
+from storage import count_items, record_fetch, save_item, connect, save_snapshot
 from urls import InvalidUrlError
 
 if len(sys.argv) != 2:
@@ -23,7 +23,9 @@ except InvalidUrlError as e:
 
 # Fetch article from saved item using normalized url
 if item["status"] != "fetched":
-    item = record_fetch(conn, item["id"], fetch_url(item["url"]))
+    fetch_result = fetch_url(item["url"])
+    snapshot_path = save_snapshot(item["id"], fetch_result.raw_html) if fetch_result.ok else None
+    item = record_fetch(conn, item["id"], fetch_result, snapshot_path)
 
 print("NEW" if created else "ALREADY SAVED")
 print("id:    ", item["id"])

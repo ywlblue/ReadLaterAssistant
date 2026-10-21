@@ -1,13 +1,14 @@
-import os
 import sqlite3
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Optional
 
+from db import get_connection
 from fetch import FetchResult
-from datetime import datetime, timezone
-
 from schemas import SavedItemDigest
 from urls import domain_of, make_item_id, normalize_url
-from db import get_connection
+
+SNAPSHOT_PATH = Path(__file__).resolve().parent.parent / "data" / "snapshots"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS saved_items (
@@ -65,12 +66,13 @@ def count_items(conn: sqlite3.Connection) -> int:
     return conn.execute("SELECT COUNT(*) FROM saved_items").fetchone()[0]
 
 
-def record_fetch(conn: sqlite3.Connection, item_id: str, result: FetchResult):
+def record_fetch(conn: sqlite3.Connection, item_id: str, result: FetchResult, snapshot_path: Optional[str] = None):
     if result.ok:
         conn.execute(
-            "UPDATE saved_items SET title = ?, content_text = ?, status = 'fetched', error = NULL "
+            "UPDATE saved_items SET title = ?, content_text = ?, status = 'fetched', error = NULL, "
+            "snapshot_path = ?, content_sha256 = ? "
             "WHERE id = ?",
-            (result.title, result.text, item_id)
+            (result.title, result.text, snapshot_path, result.content_sha256, item_id)
         )
     else:
         conn.execute(
@@ -93,3 +95,11 @@ def record_digest(conn: sqlite3.Connection, item_id: str, result: Optional[Saved
     )
     conn.commit()
     return conn.execute("SELECT * FROM saved_items WHERE id = ?", (item_id,)).fetchone()
+
+
+def save_snapshot(item_id: str, snapshot: bytes, folder: Path = SNAPSHOT_PATH) -> str:
+    folder.mkdir(parents=True, exist_ok=True)
+    filename = f"{item_id}.html"
+    (folder / filename).write_bytes(snapshot)
+    return filename
+

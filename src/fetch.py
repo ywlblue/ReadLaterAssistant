@@ -1,3 +1,4 @@
+import hashlib
 from dataclasses import dataclass
 from typing import Optional
 
@@ -23,6 +24,8 @@ class FetchResult:
     title: Optional[str] = None
     text: Optional[str] = None
     error: Optional[str] = None
+    raw_html: Optional[bytes] = None
+    content_sha256: Optional[str] = None
 
 
 # Helper method to download page content with given url
@@ -73,4 +76,5 @@ def fetch_url(url: str, download_page=download) -> FetchResult:
     title, text = extract(page.body)
     if len(text) < MIN_TEXT_CHARS:
         return failed("too_little_text", f"{len(text)} chars")
-    return FetchResult(ok=True, title=title, text=text)
+    return FetchResult(ok=True, title=title, text=text, raw_html=page.body,
+                       content_sha256=hashlib.sha256(page.body).hexdigest())

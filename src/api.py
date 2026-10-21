@@ -12,7 +12,7 @@ from fetch import fetch_url
 from logging_config import setup_logging
 from model import LLMTimeOutException
 from schemas import SavedItemDigest, DigestParseError
-from storage import save_item, connect, record_fetch, record_digest
+from storage import save_item, connect, record_fetch, record_digest, save_snapshot
 from urls import InvalidUrlError
 
 setup_logging()
@@ -70,10 +70,13 @@ def save_url(item: SaveRequest) -> SaveResponse:
         result = saved_item
 
         if not result["content_text"]:
+            fetch_result = fetch_url(result["url"])
+            snapshot_path = save_snapshot(result["id"], fetch_result.raw_html) if fetch_result.ok else None
             result = record_fetch(
                 conn,
                 result["id"],
-                fetch_url(result["url"]),
+                fetch_result,
+                snapshot_path
             )
 
         if not result["digest_json"] and result["content_text"]:

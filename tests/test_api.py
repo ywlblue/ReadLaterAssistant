@@ -156,8 +156,11 @@ def test_save_llm_return_invalid_json(monkeypatch):
         "error": "invalid_json",
     }
 
+    snapshot_path = f"{saved_item['id']}.html"
+
     mock_save = Mock(return_value=(saved_item, False))
     mock_fetch = Mock()
+    mock_save_snapshot = Mock(return_value=snapshot_path)
     mock_digest = Mock(
         side_effect=DigestParseError(
             "invalid_json",
@@ -170,13 +173,14 @@ def test_save_llm_return_invalid_json(monkeypatch):
     monkeypatch.setattr(api, "connect", Mock(return_value=conn))
     monkeypatch.setattr(api, "save_item", mock_save)
     monkeypatch.setattr(api, "fetch_url", mock_fetch)
+    monkeypatch.setattr(api, "save_snapshot", mock_save_snapshot)
     monkeypatch.setattr(api, "digest", mock_digest)
     monkeypatch.setattr(api, "record_digest", mock_record_digest)
 
     with TestClient(api.app) as client:
         response = client.post(
             "/save",
-            json={"url": saved_item["url"]},
+            json={"url": saved_item["url"], "origin_type": "ORIGINAL"},
         )
 
     assert response.status_code == 200
@@ -191,15 +195,17 @@ def test_save_llm_return_invalid_json(monkeypatch):
         None,
         "invalid_json",
     )
-    mock_save.assert_called_once_with(conn, saved_item["url"])
+    mock_save.assert_called_once_with(conn, saved_item["url"], api.SavedAtOrigin.ORIGINAL.name)
     mock_fetch.assert_not_called()
+    mock_save_snapshot.assert_not_called()
     mock_digest.assert_called_once_with(saved_item["content_text"])
 
 
 def test_save_content(monkeypatch, tmp_path):
     fetch_result = FetchResult(True, "Hello World", "This is a text")
-
+    snapshot_path = f"test-abcd.html"
     mock_fetch = Mock(return_value=fetch_result)
+    mock_save_snapshot = Mock(return_value=snapshot_path)
     mock_digest = Mock(
         side_effect=DigestParseError(
             "bad_json",
@@ -211,10 +217,11 @@ def test_save_content(monkeypatch, tmp_path):
     # Return lambda for connection instead of using pre-initialized connection
     monkeypatch.setattr(api, "connect", lambda: connect(str(tmp_path / "test.db")))
     monkeypatch.setattr(api, "fetch_url", mock_fetch)
+    monkeypatch.setattr(api, "save_snapshot", mock_save_snapshot)
     monkeypatch.setattr(api, "digest", mock_digest)
 
     with TestClient(api.app) as client:
-        response = client.post("/save", json={"url": "https://example.com/article"})
+        response = client.post("/save", json={"url": "https://example.com/article", "origin_type": "IMPORT"})
 
     assert response.status_code == 200
     save_response = api.SaveResponse.model_validate_json(response.text)
@@ -227,6 +234,8 @@ def test_save_content(monkeypatch, tmp_path):
                                                             (save_response.item_id,)).fetchone()
     assert saved_item["content_text"] == "This is a text"
     assert saved_item["status"] == "digest_failed"
+    assert saved_item["saved_at_origin"] == "IMPORT"
+    assert saved_item["snapshot_path"] == snapshot_path
     mock_fetch.assert_called_once()
 
 
