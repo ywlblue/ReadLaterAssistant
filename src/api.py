@@ -1,6 +1,7 @@
 import logging
 import time
 import uuid
+from enum import Enum
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException
@@ -18,8 +19,15 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 
+class SavedAtOrigin(str, Enum):
+    LIVE = "LIVE"
+    IMPORT = "IMPORT"
+    ORIGINAL = "ORIGINAL"
+
+
 class SaveRequest(BaseModel):
     url: str
+    origin_type: SavedAtOrigin = SavedAtOrigin.LIVE
 
 
 class SaveResponse(BaseModel):
@@ -58,7 +66,7 @@ def save_url(item: SaveRequest) -> SaveResponse:
             raise HTTPException(status_code=400, detail="Missing URL")
 
         conn = connect()
-        saved_item, created = save_item(conn, item.url)
+        saved_item, created = save_item(conn, item.url, item.origin_type.name)
         result = saved_item
 
         if not result["content_text"]:

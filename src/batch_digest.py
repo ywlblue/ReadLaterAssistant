@@ -81,7 +81,8 @@ def run():
 
 
 def get_digest(link):
-    response = requests.post("http://localhost:8000/save", json={"url": link}, timeout=120)
+    response = requests.post("http://localhost:8000/save",
+                             json={"url": link, "origin_type": "IMPORT"}, timeout=120)
     if response.status_code != 200:
         return response.status_code, response.json()["detail"]
     save_response = SaveResponse.model_validate(response.json())
