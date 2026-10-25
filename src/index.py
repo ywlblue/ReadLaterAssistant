@@ -76,9 +76,63 @@ def build_index(collection: Collection, conn: sqlite3.Connection, embed=embed_te
     return collection.count()
 
 
+def build_where(
+    domain: str | None = None,
+    since: int | None = None,
+    until: int | None = None,
+) -> dict | None:
+    conditions = []
+
+    if domain:
+        conditions.append({"domain": domain})
+
+    if since is not None:
+        conditions.append({"saved_day": {"$gte": since}})
+
+    if until is not None:
+        conditions.append({"saved_day": {"$lte": until}})
+
+    if not conditions:
+        return None
+
+    if len(conditions) == 1:
+        return conditions[0]
+
+    return {"$and": conditions}
+
+
+def retrieve(query: str, collection: Collection, k: int, domain=None, since=None, until=None):
+    query_vector = embed_texts([query])[0]
+    result = collection.query(
+        query_embeddings=[query_vector],
+        n_results=k,
+        where=build_where(domain, since, until),
+    )
+    # chunk_id、item_id、url、domain、saved_day、distance、text
+    data = []
+    for chunk_id, document, metadata, distance in zip(result["ids"][0], result["documents"][0],
+                                                      result["metadatas"][0], result["distances"][0]):
+        data.append({"chunk_id": chunk_id,
+                     "item_id": metadata["item_id"],
+                     "url": metadata["url"],
+                     "domain": metadata["domain"],
+                     "text": document,
+                     "saved_day": metadata["saved_day"],
+                     "distance": distance})
+
+    return data
+
+
 if __name__ == '__main__':
     conn = connect()
     clt = set_up_chroma()
     count = build_index(clt, conn)
     print(f"Result: {count}")
     conn.close()
+    print("============TEST DOMAIN===============")
+    data = retrieve("dynamic programming", clt, 5, domain="www.geeksforgeeks.org")
+    print(data)
+    print("\n\n\n")
+    print("============TEST DATE===============")
+    data = retrieve("dynamic programming", clt, 5, since=20261012, until=20261015)
+    print(data)
