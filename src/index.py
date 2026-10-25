@@ -77,9 +77,9 @@ def build_index(collection: Collection, conn: sqlite3.Connection, embed=embed_te
 
 
 def build_where(
-    domain: str | None = None,
-    since: int | None = None,
-    until: int | None = None,
+        domain: str | None = None,
+        since: int | None = None,
+        until: int | None = None,
 ) -> dict | None:
     conditions = []
 
@@ -101,8 +101,8 @@ def build_where(
     return {"$and": conditions}
 
 
-def retrieve(query: str, collection: Collection, k: int, domain=None, since=None, until=None):
-    query_vector = embed_texts([query])[0]
+def retrieve(query: str, collection: Collection, k: int, embed=embed_texts, domain=None, since=None, until=None):
+    query_vector = embed([query])[0]
     result = collection.query(
         query_embeddings=[query_vector],
         n_results=k,

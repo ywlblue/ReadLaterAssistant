@@ -1,0 +1,10 @@
+{"query": "How does a servlet url-pattern match incoming requests?", "expected_item_ids": ["e0b311c7a654a9e6"], "filters": null}
+{"query": "What's Harshicorp Vault and how it works", "expected_item_ids": ["1f44fa699fbdaa46", "41815643dc5595f6"], "filters": null}
+{"query": "What's the key steps of solving a Dynamic Programming problem?", "expected_item_ids": ["783c3656a3bbcbe2"], "filters": {"domain": "www.geeksforgeeks.org"}}
+{"query": "What's DNS?", "expected_item_ids": ["f8e9bd0f4dcc3f58", "b4e91f9a6e78fee1"], "filters": null}
+{"query": "What's the difference of UDP and TCP, and their usage?", "expected_item_ids": ["5c35d650e1d44697", "ef75458f6e296e61", "6a4e30c82368e2a2"], "filters": null}
+{"query": "How to deploy a web application?", "expected_item_ids": ["110a083f7129fc7d", "267e3396a7cf835c"], "filters": null}
+{"query": "What's the main tensions in India’s democracy", "expected_item_ids": ["31f6331830fee320"], "filters": null}
+{"query": "Is there a poll about how Americans view the president profiting from the office?", "expected_item_ids": ["57f60a507a9f9b05"], "filters": null}
+{"query": "That article about a mysterious ancient Egyptian queen", "expected_item_ids": ["6cea50785060c83c"], "filters": null}
+{"query": "Give me a high level Python tutorial", "expected_item_ids": ["46da2dec76cbf946"], "filters": {"since": 20261017, "until": 20261019}}
