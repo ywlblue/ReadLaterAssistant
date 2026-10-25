@@ -77,4 +77,4 @@ def fetch_url(url: str, download_page=download) -> FetchResult:
     if len(text) < MIN_TEXT_CHARS:
         return failed("too_little_text", f"{len(text)} chars")
     return FetchResult(ok=True, title=title, text=text, raw_html=page.body,
-                       content_sha256=hashlib.sha256(page.body).hexdigest())
+                       content_sha256=hashlib.sha256(text.encode()).hexdigest())

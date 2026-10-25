@@ -55,8 +55,8 @@ def split_documents_with_strategy(docs: list[Document], strategy: Strategy) -> l
     return splitter.split_documents(docs)
 
 
-def get_document_id(item_id: str, strategy: str, chunk_index: int, sha: str):
-    context = f"{item_id}:{strategy}:{chunk_index}:{sha}"
+def get_document_id(item_id: str, strategy: str, chunk_index: int, text_sha: str):
+    context = f"{item_id}:{strategy}:{chunk_index}:{text_sha}"
     return hashlib.sha256(context.encode()).hexdigest()
 
 
@@ -79,8 +79,9 @@ def process_document(item_ids: list[str]):
         document = load_document(row["content_text"], row["id"], row["url"])
         strategy_info = split_strategy.strategy_info
         split_docs = split_documents_with_strategy([document], strategy=split_strategy)
+        text_sha = hashlib.sha256(row["content_text"].encode()).hexdigest()
         for index, doc in enumerate(split_docs):
-            doc_id = get_document_id(row["id"], strategy_info, index, row["content_sha256"])
+            doc_id = get_document_id(row["id"], strategy_info, index, text_sha)
             conn.execute("INSERT OR IGNORE INTO chunks (id, item_id, content_text, chunk_index, strategy) VALUES (?, "
                          "?, ?, ?, ?)", (doc_id, row["id"], doc.page_content, index, strategy_info))
     conn.commit()
@@ -88,11 +89,11 @@ def process_document(item_ids: list[str]):
 
 
 if __name__ == '__main__':
-    process_document(['2431fbb46605e2f9', 'ce6513377c2b650f', '8d3838e130953273',
-                      '1e122840bf42ea63', 'b6b726c7e072489e'])
     conn = connect_chunks()
+    chunk_rows = conn.execute("SELECT id FROM saved_items WHERE content_text IS NOT NULL").fetchall()
+    item_ids = [row["id"] for row in chunk_rows]
+    process_document(item_ids)
     rows = conn.execute("SELECT item_id, COUNT(*) FROM chunks GROUP BY item_id;").fetchall()
     for row, count in rows:
         print(f"{row}: {count}")
-
     conn.close()
