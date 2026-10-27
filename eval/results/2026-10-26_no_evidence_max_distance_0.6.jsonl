@@ -1,0 +1,5 @@
+{"query": "Could the U.S. Democrats win the presidential election in 2028?", "top1_distance": 0.6290926337242126, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}
+{"query": "How does QUIC’s handshake work?", "top1_distance": 0.5851474404335022, "insufficient_evidence": true, "layer": "model", "answer": "The context does not provide specific details on how QUIC’s handshake works."}
+{"query": "How do I configure a Kubernetes Ingress?", "top1_distance": 0.6980667114257812, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}
+{"query": "Who won the 2026 World Cup final?", "top1_distance": 0.8269696235656738, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}
+{"query": "How do I bake sourdough bread?", "top1_distance": 0.7829128503799438, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}

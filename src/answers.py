@@ -5,6 +5,9 @@ from index import retrieve, set_up_chroma
 from model import get_response
 from prompts import query_prompt
 
+# 10/26: answerable top1 max 0.544, no-evidence min 0.585 (n=15). Re-check after 20-q baseline.
+MAX_DISTANCE = 0.6
+
 
 class Source(BaseModel):
     ref: int
@@ -16,6 +19,9 @@ class Source(BaseModel):
 class Answer(BaseModel):
     answer: str
     sources: list[Source]
+    insufficient_evidence: bool = False
+    top_distance: float | None = None
+    layer: str | None = None
 
 
 class LLMAnswer(BaseModel):
@@ -23,8 +29,14 @@ class LLMAnswer(BaseModel):
     used_refs: list[int]
 
 
-def answer(query, collection, k=5, embed=embed_texts, call_model=get_response, **filters) -> Answer:
+def answer(query, collection, k=5, embed=embed_texts, call_model=get_response, max_distance=MAX_DISTANCE, **filters) -> Answer:
     results = retrieve(query, collection, k, embed, **filters)
+
+    if not results or results[0]["distance"] > max_distance:
+        return Answer(answer="No saved item has enough evidence to answer this.",
+                      sources=[], insufficient_evidence=True, layer="retrieval",
+                      top_distance=results[0]["distance"] if results else None)
+
     context_map = {
         i: result
         for i, result in enumerate(results, start=1)
@@ -50,6 +62,10 @@ def answer(query, collection, k=5, embed=embed_texts, call_model=get_response, *
     if any(ref not in context_map for ref in used_refs):
         raise ValueError("LLM returned an unknown source reference")
 
+    if not used_refs:
+        return Answer(answer=llm_result.answer, sources=[], layer="model",
+                      insufficient_evidence=True, top_distance=results[0]["distance"])
+
     return Answer(
         answer=llm_result.answer,
         sources=[
@@ -61,10 +77,11 @@ def answer(query, collection, k=5, embed=embed_texts, call_model=get_response, *
             )
             for ref in used_refs
         ],
+        top_distance=results[0]["distance"]
     )
 
 
 if __name__ == '__main__':
-    collection = set_up_chroma()
-    llm_answer = answer("What is the difference between TCP and UDP?", collection)
+    clt = set_up_chroma()
+    llm_answer = answer("What is the difference between TCP and UDP?", clt)
     print(llm_answer)
