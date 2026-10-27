@@ -27,6 +27,14 @@ def fake_call_model_invalid_ref(instructions, query, json_mode): return json.dum
 def fake_call_model_invalid_json(instructions, query, json_mode): return "Hello World"
 
 
+def fake_call_model_must_not_run(instructions, query, json_mode):
+    raise AssertionError("model should not be called")
+
+
+def fake_call_model_empty_ref(instructions, query, json_mode): return json.dumps(
+    {"answer": "Bla bla bla.", "used_refs": []})
+
+
 @pytest.fixture
 def collection():
     collection = client.get_or_create_collection(name="test", metadata={"hnsw:space": "cosine"})
@@ -53,6 +61,7 @@ def test_answer_success_with_ref_1(collection):
     assert source.item_id == "A"
     assert source.url == "https://www.test-A.com"
     assert source.excerpt == "UDP is connectionless."
+    assert not result.insufficient_evidence
 
 
 def test_answer_success_with_ref_2(collection):
@@ -74,3 +83,19 @@ def test_answer_failed_with_invalid_ref(collection):
 def test_answer_failed_with_invalid_json(collection):
     with pytest.raises(ValidationError):
         answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_invalid_json)
+
+
+def test_answer_exceed_max_distance(collection):
+    result = answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_must_not_run,
+                    max_distance=-1, domain="none.com")
+    assert result.sources == []
+    assert result.insufficient_evidence
+    assert result.top_distance is None
+    assert result.layer == "retrieval"
+
+
+def test_answer_with_empty_used_refs(collection):
+    result = answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_empty_ref)
+    assert result.sources == []
+    assert result.insufficient_evidence
+    assert result.layer == "model"
