@@ -14,6 +14,7 @@ class Source(BaseModel):
     item_id: str
     url: str
     excerpt: str
+    chunk_id: str
 
 
 class Answer(BaseModel):
@@ -74,6 +75,7 @@ def answer(query, collection, k=5, embed=embed_texts, call_model=get_response, m
                 item_id=context_map[ref]["item_id"],
                 url=context_map[ref]["url"],
                 excerpt=context_map[ref]["text"],
+                chunk_id=context_map[ref]["chunk_id"]
             )
             for ref in used_refs
         ],
