@@ -7,7 +7,10 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
+from answers import answer
+from chroma_config import setup_chroma
 from digest import digest
+from events import record_ask, update_feedback, connect_events
 from fetch import fetch_url
 from logging_config import setup_logging
 from model import LLMTimeOutException
@@ -18,11 +21,18 @@ from urls import InvalidUrlError
 setup_logging()
 logger = logging.getLogger(__name__)
 
+chroma_collection = setup_chroma()
+
 
 class SavedAtOrigin(str, Enum):
     LIVE = "LIVE"
     IMPORT = "IMPORT"
     ORIGINAL = "ORIGINAL"
+
+
+class Feedback(str, Enum):
+    FOUND = "FOUND"
+    MISSED = "MISSED"
 
 
 class SaveRequest(BaseModel):
@@ -39,6 +49,24 @@ class SaveResponse(BaseModel):
     error: Optional[str] = None
 
 
+class AskRequest(BaseModel):
+    query: str
+
+
+class AskResponse(BaseModel):
+    request_id: str
+    answer: str
+
+
+class FeedbackRequest(BaseModel):
+    request_id: str
+    feedback: Feedback
+
+
+class FeedbackResponse(BaseModel):
+    status: str
+
+
 app = FastAPI()
 
 SAVE_MESSAGE = (
@@ -47,6 +75,9 @@ SAVE_MESSAGE = (
     "item_status=%(item_status)s "
     "latency_ms=%(latency_ms).2f error=%(error)r"
 )
+
+
+ASK_MESSAGE = "request_id=%(request_id)s path=/ask query_len=%(query_len)d latency_ms=%(latency_ms).2f"
 
 
 @app.post("/save")
@@ -137,3 +168,25 @@ def save_url(item: SaveRequest) -> SaveResponse:
             log_data,
             exc_info=unexpected_error,
         )
+
+
+@app.post("/ask")
+def ask(request: AskRequest) -> AskResponse:
+    start = time.perf_counter()
+    result = answer(request.query, chroma_collection)
+    latency_ms = (time.perf_counter() - start) * 1000
+    request_id = str(uuid.uuid4())
+    conn = connect_events()
+    record_ask(conn, request_id, len(request.query), latency_ms, result)
+    logger.log(logging.INFO, ASK_MESSAGE.format(request_id, len(request.query), latency_ms))
+    return AskResponse(request_id=request_id, answer=result.answer)
+
+
+@app.post("/feedback")
+def feedback(request: FeedbackRequest) -> FeedbackResponse:
+    request_id = request.request_id
+    conn = connect_events()
+    row, updated = update_feedback(conn, request_id, request.feedback.name)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Unknown request_id")
+    return FeedbackResponse(status="ok")
