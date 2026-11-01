@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from embeddings import embed_texts
 from index import retrieve, set_up_chroma
@@ -56,8 +56,18 @@ def answer(query, collection, k=5, embed=embed_texts, call_model=get_response, m
         
         Return the answer as JSON.
         """
-    raw_response = call_model(prompt, question, json_mode=True)
-    llm_result = LLMAnswer.model_validate_json(raw_response)
+
+    for attempt in range(2):
+        raw_response = call_model(prompt, question, json_mode=True)
+        try:
+            llm_result = LLMAnswer.model_validate_json(raw_response)
+            break
+        except ValidationError:
+            if attempt == 1:
+                return Answer(answer="The model returned an invalid response.",
+                              sources=[], insufficient_evidence=True,
+                              layer="model_error",
+                              top_distance=results[0]["distance"])
     used_refs = list(dict.fromkeys(llm_result.used_refs))
 
     if any(ref not in context_map for ref in used_refs):

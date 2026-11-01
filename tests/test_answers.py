@@ -2,7 +2,6 @@ import json
 
 import chromadb
 import pytest
-from pydantic import ValidationError
 
 from answers import answer
 
@@ -33,6 +32,9 @@ def fake_call_model_must_not_run(instructions, query, json_mode):
 
 def fake_call_model_empty_ref(instructions, query, json_mode): return json.dumps(
     {"answer": "Bla bla bla.", "used_refs": []})
+
+
+def fake_call_model_empty_response(instructions, query, json_mode): return {}
 
 
 @pytest.fixture
@@ -81,8 +83,10 @@ def test_answer_failed_with_invalid_ref(collection):
 
 
 def test_answer_failed_with_invalid_json(collection):
-    with pytest.raises(ValidationError):
-        answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_invalid_json)
+    result = answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_invalid_json)
+    assert result.sources == []
+    assert result.insufficient_evidence
+    assert result.layer == "model_error"
 
 
 def test_answer_exceed_max_distance(collection):
@@ -99,3 +103,10 @@ def test_answer_with_empty_used_refs(collection):
     assert result.sources == []
     assert result.insufficient_evidence
     assert result.layer == "model"
+
+
+def test_answer_with_retry(collection):
+    result = answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_empty_response)
+    assert result.sources == []
+    assert result.insufficient_evidence
+    assert result.layer == "model_error"
