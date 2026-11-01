@@ -7,7 +7,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from answers import answer
+from answers import answer, Source
 from chroma_config import setup_chroma
 from digest import digest
 from events import record_ask, update_feedback, connect_events
@@ -56,6 +56,7 @@ class AskRequest(BaseModel):
 class AskResponse(BaseModel):
     request_id: str
     answer: str
+    sources: list[Source]
 
 
 class FeedbackRequest(BaseModel):
@@ -178,8 +179,10 @@ def ask(request: AskRequest) -> AskResponse:
     request_id = str(uuid.uuid4())
     conn = connect_events()
     record_ask(conn, request_id, len(request.query), latency_ms, result)
-    logger.log(logging.INFO, ASK_MESSAGE.format(request_id, len(request.query), latency_ms))
-    return AskResponse(request_id=request_id, answer=result.answer)
+    logger.info(ASK_MESSAGE, {"request_id": request_id,
+                              "query_len": len(request.query),
+                              "latency_ms": latency_ms})
+    return AskResponse(request_id=request_id, answer=result.answer, sources=result.sources)
 
 
 @app.post("/feedback")
