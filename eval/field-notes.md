@@ -28,3 +28,4 @@ Only record what actually happened; do not make up activity.
 - 2026-11-01: at least 8 of the 100 old bookmarks are dead
     (404 × 5 on 10/19, 3 more found on 11/1). Snapshots taken at save
     time keep the text even after the original link dies.
+- 2026-11-02: need to run chunks.py and index.py manually when a new link is saved. Should add the chunking and indexing after saving successfully.
