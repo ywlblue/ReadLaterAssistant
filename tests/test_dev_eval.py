@@ -3,7 +3,8 @@ import math
 import chromadb
 import pytest
 
-from run_dev_eval import evaluate_one, reciprocal_rank, summarize, top_unique_items
+from run_dev_eval import (check_frozen, evaluate_one, queries_path, reciprocal_rank, summarize,
+                          top_unique_items)
 
 client = chromadb.EphemeralClient()
 
@@ -87,3 +88,27 @@ def test_summary_keeps_groups_apart():
     assert s["hit@5"] == 0.5 and s["mrr"] == 0.5
     assert s["answerable_abstained"] == 1
     assert (s["no_evidence"], s["no_evidence_abstained"]) == (1, 1)
+
+
+def test_final_test_split_is_locked_by_default():
+    with pytest.raises(SystemExit):
+        queries_path("test")
+
+
+def test_final_test_split_opens_with_flag():
+    assert queries_path("test", final_test=True).name == "test.jsonl"
+    assert queries_path("dev").name == "dev.jsonl"
+
+
+def test_check_frozen(tmp_path):
+    cases = tmp_path / "dev.jsonl"
+    cases.write_text('{"id": "q01"}\n', encoding="utf-8")
+    import hashlib, json
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps({"splits": {"dev": {"sha256": hashlib.sha256(cases.read_bytes()).hexdigest()}}}))
+
+    check_frozen("dev", cases, manifest)  # unchanged: no error
+
+    cases.write_text('{"id": "q01", "query": "edited"}\n', encoding="utf-8")
+    with pytest.raises(SystemExit):
+        check_frozen("dev", cases, manifest)

@@ -3,6 +3,10 @@
 Run from the repo root:
     python src/run_dev_eval.py
     python src/run_dev_eval.py --top-items 5 --chunk-k 30
+    python src/run_dev_eval.py --split test --final-test   # Sprint 4 only
+
+The final-test split is locked by default, so it cannot be used for tuning.
+Both split files must match the sha256 in eval/dataset-manifest.json (frozen on 11/3).
 
 Answerable cases  -> item-level Hit@5 and MRR (after removing duplicate items).
 No-evidence cases -> abstained or not (top distance > MAX_DISTANCE, or no result).
@@ -11,6 +15,7 @@ Writes one JSON line per case to eval/results/<date>_dev_eval.jsonl
 and prints a summary.
 """
 import argparse
+import hashlib
 import json
 import time
 from datetime import date
@@ -24,6 +29,8 @@ from index import COLLECTION_NAME, retrieve
 
 ROOT = Path(__file__).resolve().parent.parent
 QUERIES_PATH = ROOT / "eval" / "dev.jsonl"
+SPLIT_PATHS = {"dev": QUERIES_PATH, "test": ROOT / "eval" / "test.jsonl"}
+MANIFEST_PATH = ROOT / "eval" / "dataset-manifest.json"
 CHROMA_PATH = ROOT / "data" / "chroma"
 RESULTS_DIR = ROOT / "eval" / "results"
 
@@ -34,6 +41,22 @@ CHUNK_K = 30    # fetch more chunks than items, because one item can fill severa
 def load_queries(path: Path = QUERIES_PATH) -> list[dict]:
     with path.open(encoding="utf-8") as f:
         return [json.loads(line) for line in f if line.strip()]
+
+
+def queries_path(split: str, final_test: bool = False) -> Path:
+    if split == "test" and not final_test:
+        raise SystemExit("The final-test split is locked during tuning. "
+                         "Use --split test --final-test only for the Sprint 4 final run.")
+    return SPLIT_PATHS[split]
+
+
+def check_frozen(split: str, path: Path, manifest_path: Path = MANIFEST_PATH) -> None:
+    # Like comparing a checksum before a release: if the cases changed, the old numbers are not comparable.
+    expected = json.loads(manifest_path.read_text(encoding="utf-8"))["splits"][split]["sha256"]
+    actual = hashlib.sha256(path.read_bytes()).hexdigest()
+    if actual != expected:
+        raise SystemExit(f"{path.name} does not match {manifest_path.name} (frozen). "
+                         "Do not edit frozen cases; add new ones as a new dataset version.")
 
 
 def open_collection():
@@ -131,19 +154,24 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--top-items", type=int, default=TOP_ITEMS)
     parser.add_argument("--chunk-k", type=int, default=CHUNK_K)
+    parser.add_argument("--split", choices=SPLIT_PATHS, default="dev")
+    parser.add_argument("--final-test", action="store_true", help="unlock the final-test split (Sprint 4)")
     args = parser.parse_args()
+
+    path = queries_path(args.split, args.final_test)
+    check_frozen(args.split, path)
 
     collection = open_collection()
     chunk_count = collection.count()
     if chunk_count == 0:
         raise SystemExit(f"Collection {COLLECTION_NAME} is empty. Build the index first.")
 
-    results = [evaluate_one(row, collection, args.top_items, args.chunk_k) for row in load_queries()]
+    results = [evaluate_one(row, collection, args.top_items, args.chunk_k) for row in load_queries(path)]
     summary = summarize(results, args.top_items)
     print_summary(results, summary, args.top_items, args.chunk_k, chunk_count)
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out = RESULTS_DIR / f"{date.today():%Y-%m-%d}_dev_eval.jsonl"
+    out = RESULTS_DIR / f"{date.today():%Y-%m-%d}_{args.split}_eval.jsonl"
     with out.open("w", encoding="utf-8") as f:
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")

@@ -1,0 +1,98 @@
+{
+  "frozen_on": "2026-11-03",
+  "frozen_from_commit": "aff57af",
+  "corpus": {
+    "db": "data/readlater.db",
+    "saved_items": 143,
+    "indexed_items": 104,
+    "chunks": 2206,
+    "chunk_strategy": "recursive_1000_50",
+    "chroma_collection_path": "data/chroma",
+    "note": "dev q28-q30 items were indexed by hand on 11/2 (chunks.py + index.py): 2115 -> 2206 chunks."
+  },
+  "splits": {
+    "dev": {
+      "file": "eval/dev.jsonl",
+      "sha256": "6c9dbc3c2c51d3ad072b0327ec7a28fb8289f6332a49dcbb24c16a897f0d9f4c",
+      "use": "tuning and comparison, any time",
+      "cases": 30,
+      "answerable": 24,
+      "no_evidence": 6,
+      "by_type": {
+        "vague": 8,
+        "ask": 5,
+        "filter": 6,
+        "no_evidence": 5,
+        "find": 6
+      },
+      "multi_passage": [
+        "q22",
+        "q23",
+        "q24"
+      ],
+      "with_filters": [
+        "q11",
+        "q12",
+        "q13",
+        "q14",
+        "q15",
+        "q27"
+      ],
+      "by_origin": {
+        "hand_authored": 15,
+        "claude_drafted": 3,
+        "no_evidence.jsonl": 5,
+        "find_queries.jsonl": 7
+      }
+    },
+    "test": {
+      "file": "eval/test.jsonl",
+      "sha256": "ea8c1c0d61d0445985ac0762594c3ec2507fa1936fec566b3884943fabf85722",
+      "use": "final scoring in Sprint 4 only. Locked by default: run_dev_eval.py --split test needs --final-test.",
+      "cases": 20,
+      "answerable": 16,
+      "no_evidence": 4,
+      "by_type": {
+        "vague": 6,
+        "ask": 3,
+        "multi": 4,
+        "filter": 4,
+        "no_evidence": 3
+      },
+      "multi_passage": [
+        "t10",
+        "t11",
+        "t12",
+        "t13"
+      ],
+      "with_filters": [
+        "t14",
+        "t15",
+        "t16",
+        "t17"
+      ],
+      "by_origin": {
+        "claude_drafted": 20
+      }
+    }
+  },
+  "totals": {
+    "cases": 50,
+    "answerable": 40,
+    "no_evidence": 10,
+    "multi_passage": 7
+  },
+  "label_origin": {
+    "hand_authored": "written by me from memory of what I saved",
+    "find_queries.jsonl": "copied from the earlier hand-written Find queries (10/24)",
+    "no_evidence.jsonl": "copied from the 10/26 no-evidence fixtures",
+    "claude_drafted": "Claude drafted the question from the article title and summary; I picked it (dev q13-q15, all of test). Likely easier than real vague memories because wording follows the article."
+  },
+  "gold": "expected_item_ids are saved_items.id (16 hex). supporting_passage strings are found in content_text after removing all whitespace. Checked 11/3: every test item exists, is indexed, is not used in dev, and matches its filter.",
+  "known_issues": [
+    "saved_day is UTC: test t15 (filter 20261101) is an article saved on Oct 31 evening local time.",
+    "No-evidence answers are checked only at the retrieval layer (distance > 0.6) in run_dev_eval.py.",
+    "Test t03-t05 are Chinese queries against English articles (cross-language).",
+    "scala-exercises.org item c974772389b0af75 is now a gambling ad page (domain resold); not used in any case."
+  ]
+}
