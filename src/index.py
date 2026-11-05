@@ -1,6 +1,4 @@
 import sqlite3
-from datetime import datetime
-from math import ceil
 from typing import Iterator
 
 import chromadb
@@ -121,6 +119,12 @@ def retrieve(query: str, collection: Collection, k: int, embed=embed_texts, doma
                      "distance": distance})
 
     return data
+
+
+def make_dense_search(collection, embed=embed_texts):
+    def search(query, k, **filters):
+        return retrieve(query, collection, k, embed=embed, **filters)
+    return search
 
 
 if __name__ == '__main__':

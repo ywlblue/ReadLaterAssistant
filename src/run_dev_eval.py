@@ -24,8 +24,8 @@ from pathlib import Path
 import chromadb
 
 from answers import MAX_DISTANCE
-from embeddings import embed_texts
-from index import COLLECTION_NAME, retrieve
+from build_fts import fts_chunk_count, lexical_search
+from index import COLLECTION_NAME, make_dense_search
 
 ROOT = Path(__file__).resolve().parent.parent
 QUERIES_PATH = ROOT / "eval" / "dev.jsonl"
@@ -34,8 +34,8 @@ MANIFEST_PATH = ROOT / "eval" / "dataset-manifest.json"
 CHROMA_PATH = ROOT / "data" / "chroma"
 RESULTS_DIR = ROOT / "eval" / "results"
 
-TOP_ITEMS = 5   # score the first 5 distinct items
-CHUNK_K = 30    # fetch more chunks than items, because one item can fill several chunk slots
+TOP_ITEMS = 5  # score the first 5 distinct items
+CHUNK_K = 30  # fetch more chunks than items, because one item can fill several chunk slots
 
 
 def load_queries(path: Path = QUERIES_PATH) -> list[dict]:
@@ -77,20 +77,20 @@ def reciprocal_rank(retrieved: list[str], expected: list[str]) -> float:
     return 0.0
 
 
-def evaluate_one(row: dict, collection, top_items: int = TOP_ITEMS, chunk_k: int = CHUNK_K,
-                 embed=embed_texts, max_distance=MAX_DISTANCE) -> dict:
+def evaluate_one(row: dict, search, abstain, top_items: int = TOP_ITEMS, chunk_k: int = CHUNK_K, search_method='dense') -> dict:
     start = time.perf_counter()
-    chunks = retrieve(row["query"], collection, chunk_k, embed=embed, **(row["filters"] or {}))
+    chunks = search(row["query"], chunk_k, **(row["filters"] or {}))
     latency_ms = (time.perf_counter() - start) * 1000
 
     retrieved = top_unique_items(chunks, top_items)
-    top_distance = chunks[0]["distance"] if chunks else None
-    abstained = top_distance is None or top_distance > max_distance
+    top_distance = chunks[0].get("distance") if chunks else None  # lexical doesn't have distance → None
+    abstained = abstain(chunks)
 
     result = {
         "id": row["id"],
         "query": row["query"],
         "type": row["type"],
+        "search_method": search_method,
         "filters": row["filters"],
         "answerable": row["answerable"],
         "expected_item_ids": row["expected_item_ids"],
@@ -150,12 +150,21 @@ def print_summary(results: list[dict], summary: dict, top_items: int, chunk_k: i
     print(f"no evidence {s['no_evidence']}: abstained {s['no_evidence_abstained']}/{s['no_evidence']}")
 
 
+def dense_abstain(max_distance=MAX_DISTANCE):
+    return lambda chunks: not chunks or chunks[0]["distance"] > max_distance
+
+
+def lexical_abstain(chunks):
+    return not chunks
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--top-items", type=int, default=TOP_ITEMS)
     parser.add_argument("--chunk-k", type=int, default=CHUNK_K)
     parser.add_argument("--split", choices=SPLIT_PATHS, default="dev")
     parser.add_argument("--final-test", action="store_true", help="unlock the final-test split (Sprint 4)")
+    parser.add_argument("--search", choices=["dense", "lexical"], default="dense")
     args = parser.parse_args()
 
     path = queries_path(args.split, args.final_test)
@@ -166,12 +175,26 @@ def main():
     if chunk_count == 0:
         raise SystemExit(f"Collection {COLLECTION_NAME} is empty. Build the index first.")
 
-    results = [evaluate_one(row, collection, args.top_items, args.chunk_k) for row in load_queries(path)]
+    search_method = args.search
+
+    if search_method == "dense":
+        search = make_dense_search(collection)
+        abstain = dense_abstain(MAX_DISTANCE)
+    else:
+        fts_count = fts_chunk_count()
+        if fts_count != chunk_count:
+            raise SystemExit(f"chunks_fts has {fts_count} chunks but Chroma has {chunk_count}. "
+                             "Run build_fts.py so both use the same corpus.")
+        search = lexical_search
+        abstain = lexical_abstain
+
+    results = [evaluate_one(row, search=search, abstain=abstain, top_items=args.top_items, chunk_k=args.chunk_k, search_method=search_method)
+               for row in load_queries(path)]
     summary = summarize(results, args.top_items)
     print_summary(results, summary, args.top_items, args.chunk_k, chunk_count)
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out = RESULTS_DIR / f"{date.today():%Y-%m-%d}_{args.split}_eval.jsonl"
+    out = RESULTS_DIR / f"{date.today():%Y-%m-%d}_{args.split}_{search_method}_eval.jsonl"
     with out.open("w", encoding="utf-8") as f:
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
