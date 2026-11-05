@@ -3,7 +3,8 @@ import math
 import chromadb
 import pytest
 
-from run_dev_eval import (check_frozen, evaluate_one, queries_path, reciprocal_rank, summarize,
+from index import retrieve
+from run_dev_eval import (check_frozen, dense_abstain, evaluate_one, queries_path, reciprocal_rank, summarize,
                           top_unique_items)
 
 client = chromadb.EphemeralClient()
@@ -54,27 +55,33 @@ def test_reciprocal_rank():
     assert reciprocal_rank(["a"], ["z"]) == 0.0
 
 
+def fake_search(collection):
+    return lambda q, k, **f: retrieve(q, collection, k, embed=fake_embed, **f)
+
+
 def test_dedup_before_top5(collection):
     # it5 is the 7th chunk but the 5th distinct item, so it counts as a hit.
-    r = evaluate_one(row(expected_item_ids=["it5"]), collection, top_items=5, chunk_k=30, embed=fake_embed)
+    r = evaluate_one(row(expected_item_ids=["it5"]), top_items=5, chunk_k=30, search=fake_search(collection),
+                     abstain=dense_abstain())
     assert r["retrieved_item_ids"] == ["it1", "it2", "it3", "it4", "it5"]
     assert r["hit"] and r["first_hit_rank"] == 5
     assert r["reciprocal_rank"] == pytest.approx(0.2)
 
 
 def test_item_after_top5_is_a_miss(collection):
-    r = evaluate_one(row(expected_item_ids=["it6"]), collection, top_items=5, chunk_k=30, embed=fake_embed)
+    r = evaluate_one(row(expected_item_ids=["it6"]), top_items=5, chunk_k=30, search=fake_search(collection),
+                     abstain=dense_abstain())
     assert not r["hit"] and r["reciprocal_rank"] == 0.0 and r["outcome"] == "Failed"
 
 
 def test_no_evidence_abstains(collection):
-    r = evaluate_one(row(answerable=False), collection, embed=fake_embed, max_distance=0.0)
+    r = evaluate_one(row(answerable=False), search=fake_search(collection), abstain=dense_abstain(0.0))
     assert r["abstained"] and r["outcome"] == "Pass"
     assert "hit" not in r
 
 
 def test_no_evidence_not_abstained(collection):
-    r = evaluate_one(row(answerable=False), collection, embed=fake_embed, max_distance=0.6)
+    r = evaluate_one(row(answerable=False), search=fake_search(collection), abstain=dense_abstain(0.6))
     assert not r["abstained"] and r["outcome"] == "Failed"
 
 
