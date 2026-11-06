@@ -1,0 +1,34 @@
+{
+  "date": "2026-11-05",
+  "git_commit": "483e702",
+  "config": {
+    "split": "dev",
+    "search": "dense",
+    "top_items": 5,
+    "chunk_k": 30,
+    "max_distance": 0.6,
+    "embedding_model": "text-embedding-3-small"
+  },
+  "corpus": {
+    "db": "data/readlater.db",
+    "saved_items": 143,
+    "indexed_items": 104,
+    "chunks": 2206,
+    "chunk_strategy": "recursive_1000_50",
+    "chroma_collection_path": "data/chroma",
+    "note": "dev q28-q30 items were indexed by hand on 11/2 (chunks.py + index.py): 2115 -> 2206 chunks.",
+    "chunks_now": 2206
+  },
+  "dataset_sha256": "6c9dbc3c2c51d3ad072b0327ec7a28fb8289f6332a49dcbb24c16a897f0d9f4c",
+  "elapsed_s": 11.87,
+  "est_tokens": 423,
+  "est_cost_usd": 8e-06,
+  "summary": {
+    "answerable": 24,
+    "hit@5": 1.0,
+    "mrr": 0.9513888888888888,
+    "answerable_abstained": 0,
+    "no_evidence": 6,
+    "no_evidence_abstained": 5
+  }
+}
