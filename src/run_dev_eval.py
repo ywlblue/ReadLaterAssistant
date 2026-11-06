@@ -17,6 +17,7 @@ and prints a summary.
 import argparse
 import hashlib
 import json
+import subprocess
 import time
 from datetime import date
 from pathlib import Path
@@ -59,6 +60,13 @@ def check_frozen(split: str, path: Path, manifest_path: Path = MANIFEST_PATH) ->
                          "Do not edit frozen cases; add new ones as a new dataset version.")
 
 
+def git_commit() -> str:
+    run = lambda *cmd: subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT).stdout.strip()
+    commit = run("git", "rev-parse", "--short", "HEAD") or "unknown"
+    dirty = run("git", "status", "--porcelain")
+    return commit + ("-dirty" if dirty else "")
+
+
 def open_collection():
     client = chromadb.PersistentClient(path=str(CHROMA_PATH))
     return client.get_collection(COLLECTION_NAME)
@@ -77,7 +85,8 @@ def reciprocal_rank(retrieved: list[str], expected: list[str]) -> float:
     return 0.0
 
 
-def evaluate_one(row: dict, search, abstain, top_items: int = TOP_ITEMS, chunk_k: int = CHUNK_K, search_method='dense') -> dict:
+def evaluate_one(row: dict, search, abstain, top_items: int = TOP_ITEMS, chunk_k: int = CHUNK_K,
+                 search_method='dense') -> dict:
     start = time.perf_counter()
     chunks = search(row["query"], chunk_k, **(row["filters"] or {}))
     latency_ms = (time.perf_counter() - start) * 1000
@@ -188,7 +197,9 @@ def main():
         search = lexical_search
         abstain = lexical_abstain
 
-    results = [evaluate_one(row, search=search, abstain=abstain, top_items=args.top_items, chunk_k=args.chunk_k, search_method=search_method)
+    run_start = time.perf_counter()
+    results = [evaluate_one(row, search=search, abstain=abstain, top_items=args.top_items, chunk_k=args.chunk_k,
+                            search_method=search_method)
                for row in load_queries(path)]
     summary = summarize(results, args.top_items)
     print_summary(results, summary, args.top_items, args.chunk_k, chunk_count)
@@ -199,6 +210,34 @@ def main():
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     print(f"saved {out.relative_to(ROOT)}")
+
+    elapsed_s = time.perf_counter() - run_start
+    queries = load_queries(path)
+    # Only dense search will call embedding api
+    est_tokens = sum(len(q["query"]) // 4 + 1 for q in queries) if search_method == "dense" else 0
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+    run_record = {
+        "date": f"{date.today():%Y-%m-%d}",
+        "git_commit": git_commit(),
+        "config": {
+            "split": args.split,
+            "search": search_method,
+            "top_items": args.top_items,
+            "chunk_k": args.chunk_k,
+            "max_distance": MAX_DISTANCE if search_method == "dense" else None,
+            "embedding_model": "text-embedding-3-small" if search_method == "dense" else None,
+        },
+        "corpus": {**manifest["corpus"], "chunks_now": chunk_count},
+        "dataset_sha256": manifest["splits"][args.split]["sha256"],
+        "elapsed_s": round(elapsed_s, 2),
+        "est_tokens": est_tokens,
+        "est_cost_usd": round(est_tokens * 0.02 / 1_000_000, 6),  # text-embedding-3-small: $0.02 / 1M tokens
+        "summary": summary,
+    }
+    run_path = out.with_name(out.stem + ".run.json")
+    run_path.write_text(json.dumps(run_record, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"saved {run_path.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":
