@@ -63,7 +63,7 @@ def check_frozen(split: str, path: Path, manifest_path: Path = MANIFEST_PATH) ->
 def git_commit() -> str:
     run = lambda *cmd: subprocess.run(cmd, capture_output=True, text=True, cwd=ROOT).stdout.strip()
     commit = run("git", "rev-parse", "--short", "HEAD") or "unknown"
-    dirty = run("git", "status", "--porcelain")
+    dirty = run("git", "status", "--porcelain", "--", ".", ":!eval/results")
     return commit + ("-dirty" if dirty else "")
 
 
@@ -197,6 +197,7 @@ def main():
         search = lexical_search
         abstain = lexical_abstain
 
+    commit = git_commit()
     run_start = time.perf_counter()
     results = [evaluate_one(row, search=search, abstain=abstain, top_items=args.top_items, chunk_k=args.chunk_k,
                             search_method=search_method)
@@ -219,7 +220,7 @@ def main():
 
     run_record = {
         "date": f"{date.today():%Y-%m-%d}",
-        "git_commit": git_commit(),
+        "git_commit": commit,
         "config": {
             "split": args.split,
             "search": search_method,
