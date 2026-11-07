@@ -90,6 +90,7 @@ def test_save_digest_success(save_context):
         "digest": ctx.summary.model_dump(mode="json"),
         "status": ctx.digested_item["status"],
         "error": None,
+        "warning": None,
     }
 
     ctx.mock_digest.assert_called_once_with(

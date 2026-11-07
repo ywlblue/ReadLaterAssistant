@@ -9,9 +9,11 @@ from pydantic import BaseModel
 
 from answers import answer, Source
 from chroma_config import setup_chroma
+from chunks import process_document
 from digest import digest
 from events import record_ask, update_feedback, connect_events
 from fetch import fetch_url
+from index import build_index
 from logging_config import setup_logging
 from model import LLMTimeOutException
 from schemas import SavedItemDigest, DigestParseError
@@ -47,6 +49,7 @@ class SaveResponse(BaseModel):
     digest: Optional[SavedItemDigest] = None
     title: Optional[str] = None
     error: Optional[str] = None
+    warning: Optional[str] = None
 
 
 class AskRequest(BaseModel):
@@ -77,7 +80,6 @@ SAVE_MESSAGE = (
     "latency_ms=%(latency_ms).2f error=%(error)r"
 )
 
-
 ASK_MESSAGE = "request_id=%(request_id)s path=/ask query_len=%(query_len)d latency_ms=%(latency_ms).2f"
 
 
@@ -92,7 +94,7 @@ def save_url(item: SaveRequest) -> SaveResponse:
         "error": None,
     }
     unexpected_error = None
-
+    index_warning = None
     try:
         if not item.url:
             raise HTTPException(status_code=400, detail="Missing URL")
@@ -110,6 +112,13 @@ def save_url(item: SaveRequest) -> SaveResponse:
                 fetch_result,
                 snapshot_path
             )
+            if created and result["content_text"]:
+                try:
+                    process_document([result["id"]])
+                    build_index(chroma_collection, conn, item_id=result["id"])
+                except Exception as e:
+                    logger.exception(str(e))
+                    index_warning = "Indexing failed."
 
         if not result["digest_json"] and result["content_text"]:
             err_msg = None
@@ -132,6 +141,7 @@ def save_url(item: SaveRequest) -> SaveResponse:
             digest=saved_item_digest,
             status=result["status"],
             error=result["error"],
+            warning=index_warning,
         )
         log_data["item_id"] = result["id"]
         log_data["error"] = result["error"]

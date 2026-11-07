@@ -19,8 +19,8 @@ def set_up_chroma():
     )
 
 
-def load_chunks(conn: sqlite3.Connection, count: int = 100) -> Iterator[list[dict]]:
-    cursor = conn.execute("""
+def load_chunks(conn: sqlite3.Connection, count: int = 100, item_id: str = None) -> Iterator[list[dict]]:
+    chunk_query = """
                     SELECT
                     c.id AS chunk_id,
                     c.content_text AS chunk_content,
@@ -32,14 +32,20 @@ def load_chunks(conn: sqlite3.Connection, count: int = 100) -> Iterator[list[dic
                     c.chunk_index AS chunk_index
                 FROM saved_items s
                 INNER JOIN chunks c ON s.id = c.item_id
-            """)
+                
+            """
+    params = []
+    if item_id:
+        chunk_query += " WHERE s.id = ?"
+        params.append(item_id)
+    cursor = conn.execute(chunk_query, params)
 
     while rows := cursor.fetchmany(count):
         yield [dict(row) for row in rows]
 
 
-def build_index(collection: Collection, conn: sqlite3.Connection, embed=embed_texts):
-    for chunks in load_chunks(conn):
+def build_index(collection: Collection, conn: sqlite3.Connection, embed=embed_texts, item_id: str = None):
+    for chunks in load_chunks(conn, item_id=item_id):
         chunk_ids = []
         documents = []
         metadata_lists = []
@@ -124,6 +130,7 @@ def retrieve(query: str, collection: Collection, k: int, embed=embed_texts, doma
 def make_dense_search(collection, embed=embed_texts):
     def search(query, k, **filters):
         return retrieve(query, collection, k, embed=embed, **filters)
+
     return search
 
 
