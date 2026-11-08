@@ -1,0 +1,37 @@
+{
+  "date": "2026-11-07",
+  "git_commit": "8c0376a",
+  "config": {
+    "split": "dev",
+    "search": "hybrid",
+    "top_items": 5,
+    "chunk_k": 30,
+    "max_distance": 0.6,
+    "embedding_model": "text-embedding-3-small",
+    "rrf_k": 60
+  },
+  "corpus": {
+    "version": "2026-11-07",
+    "db": "data/readlater.db",
+    "saved_items": 146,
+    "indexed_items": 105,
+    "chunks": 2216,
+    "chunk_strategy": "recursive_1000_50",
+    "chroma_collection_path": "data/chroma",
+    "fts_table": "chunks_fts (2216 chunks, rebuilt 11/7 with build_fts.py)",
+    "note": "11/6 evening: 3 saves through /save. 1 indexed (5c2fc432d029144f how-to-read-faster, 10 chunks); 2 fetch_failed (b8ff5cc473639c05 verywellfit, ffca9d12baefeb80 adidas). None is a gold item for dev or test. /save writes Chroma but not chunks_fts, so FTS was rebuilt by hand: 2206 -> 2216. Dense and lexical dev reruns on 2216 match the 2206 results (same hit@5/MRR/abstention).",
+    "chunks_now": 2216
+  },
+  "dataset_sha256": "6c9dbc3c2c51d3ad072b0327ec7a28fb8289f6332a49dcbb24c16a897f0d9f4c",
+  "elapsed_s": 8.62,
+  "est_tokens": 423,
+  "est_cost_usd": 8e-06,
+  "summary": {
+    "answerable": 24,
+    "hit@5": 1.0,
+    "mrr": 0.9722222222222222,
+    "answerable_abstained": 0,
+    "no_evidence": 6,
+    "no_evidence_abstained": 5
+  }
+}
