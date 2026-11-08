@@ -2,13 +2,15 @@
   "frozen_on": "2026-11-03",
   "frozen_from_commit": "aff57af",
   "corpus": {
+    "version": "2026-11-07",
     "db": "data/readlater.db",
-    "saved_items": 143,
-    "indexed_items": 104,
-    "chunks": 2206,
+    "saved_items": 146,
+    "indexed_items": 105,
+    "chunks": 2216,
     "chunk_strategy": "recursive_1000_50",
     "chroma_collection_path": "data/chroma",
-    "note": "dev q28-q30 items were indexed by hand on 11/2 (chunks.py + index.py): 2115 -> 2206 chunks."
+    "fts_table": "chunks_fts (2216 chunks, rebuilt 11/7 with build_fts.py)",
+    "note": "11/6 evening: 3 saves through /save. 1 indexed (5c2fc432d029144f how-to-read-faster, 10 chunks); 2 fetch_failed (b8ff5cc473639c05 verywellfit, ffca9d12baefeb80 adidas). None is a gold item for dev or test. /save writes Chroma but not chunks_fts, so FTS was rebuilt by hand: 2206 -> 2216. Dense and lexical dev reruns on 2216 match the 2206 results (same hit@5/MRR/abstention)."
   },
   "splits": {
     "dev": {
@@ -93,6 +95,32 @@
     "saved_day is UTC: test t15 (filter 20261101) is an article saved on Oct 31 evening local time.",
     "No-evidence answers are checked only at the retrieval layer (distance > 0.6) in run_dev_eval.py.",
     "Test t03-t05 are Chinese queries against English articles (cross-language).",
-    "scala-exercises.org item c974772389b0af75 is now a gambling ad page (domain resold); not used in any case."
+    "scala-exercises.org item c974772389b0af75 is now a gambling ad page (domain resold); not used in any case.",
+    "/save indexes new items into Chroma but not chunks_fts; run build_fts.py after new saves before a lexical/hybrid run (run_dev_eval.py stops on a count mismatch). Fix in /save if lexical or hybrid is selected."
+  ],
+  "corpus_history": [
+    {
+      "version": "2026-11-03",
+      "saved_items": 143,
+      "indexed_items": 104,
+      "chunks": 2206,
+      "note": "dev q28-q30 items were indexed by hand on 11/2 (chunks.py + index.py): 2115 -> 2206 chunks.",
+      "runs": [
+        "eval/results/2026-11-04_*",
+        "eval/results/2026-11-05_*"
+      ]
+    },
+    {
+      "version": "2026-11-07",
+      "saved_items": 146,
+      "indexed_items": 105,
+      "chunks": 2216,
+      "note": "+1 indexed item (5c2fc432d029144f), 2 fetch_failed saves. Used by the lexical/dense/hybrid comparison.",
+      "runs": [
+        "eval/results/2026-11-07_dev_dense_eval.*",
+        "eval/results/2026-11-07_dev_lexical_eval.*",
+        "eval/results/2026-11-07_dev_hybrid_eval.*"
+      ]
+    }
   ]
 }

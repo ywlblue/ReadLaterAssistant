@@ -104,6 +104,8 @@ def setup_fts():
 
 
 if __name__ == '__main__':
+    setup_fts()  # Rebuild chunks_fts
+
     test_result_1 = lexical_search("Why do programmers hate meetings in the afternoon?", 2)
     print(test_result_1)
 

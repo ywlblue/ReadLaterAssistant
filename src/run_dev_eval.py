@@ -26,6 +26,7 @@ import chromadb
 
 from answers import MAX_DISTANCE
 from build_fts import fts_chunk_count, lexical_search
+from hybrid_search import make_hybrid_search, RRF_K
 from index import COLLECTION_NAME, make_dense_search
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -73,7 +74,7 @@ def open_collection():
 
 
 def top_unique_items(chunks: list[dict], n: int) -> list[str]:
-    # Keep order, drop repeats (like Java's LinkedHashSet), then take the first n.
+    # Keep order, drop repeats, then take the first n.
     return list(dict.fromkeys(c["item_id"] for c in chunks))[:n]
 
 
@@ -160,11 +161,20 @@ def print_summary(results: list[dict], summary: dict, top_items: int, chunk_k: i
 
 
 def dense_abstain(max_distance=MAX_DISTANCE):
-    return lambda chunks: not chunks or chunks[0]["distance"] > max_distance
+    return lambda chunks: (not chunks
+                           or chunks[0].get("distance") is None
+                           or chunks[0]["distance"] > max_distance)
 
 
 def lexical_abstain(chunks):
     return not chunks
+
+
+def validate_fts_count(expected_chunk_count: int):
+    fts_count = fts_chunk_count()
+    if fts_count != expected_chunk_count:
+        raise SystemExit(f"chunks_fts has {fts_count} chunks but Chroma has {expected_chunk_count}. "
+                         "Run build_fts.py so both use the same corpus.")
 
 
 def main():
@@ -173,7 +183,7 @@ def main():
     parser.add_argument("--chunk-k", type=int, default=CHUNK_K)
     parser.add_argument("--split", choices=SPLIT_PATHS, default="dev")
     parser.add_argument("--final-test", action="store_true", help="unlock the final-test split (Sprint 4)")
-    parser.add_argument("--search", choices=["dense", "lexical"], default="dense")
+    parser.add_argument("--search", choices=["dense", "lexical", "hybrid"], default="dense")
     args = parser.parse_args()
 
     path = queries_path(args.split, args.final_test)
@@ -189,13 +199,14 @@ def main():
     if search_method == "dense":
         search = make_dense_search(collection)
         abstain = dense_abstain(MAX_DISTANCE)
-    else:
-        fts_count = fts_chunk_count()
-        if fts_count != chunk_count:
-            raise SystemExit(f"chunks_fts has {fts_count} chunks but Chroma has {chunk_count}. "
-                             "Run build_fts.py so both use the same corpus.")
+    elif search_method == "lexical":
+        validate_fts_count(chunk_count)
         search = lexical_search
         abstain = lexical_abstain
+    else:
+        validate_fts_count(chunk_count)
+        search = make_hybrid_search(collection)
+        abstain = dense_abstain(MAX_DISTANCE)
 
     commit = git_commit()
     run_start = time.perf_counter()
@@ -214,8 +225,10 @@ def main():
 
     elapsed_s = time.perf_counter() - run_start
     queries = load_queries(path)
-    # Only dense search will call embedding api
-    est_tokens = sum(len(q["query"]) // 4 + 1 for q in queries) if search_method == "dense" else 0
+
+    uses_dense = search_method in ("dense", "hybrid")
+    # Only dense and hybrid search will call embedding api
+    est_tokens = sum(len(q["query"]) // 4 + 1 for q in queries) if uses_dense else 0
     manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
     run_record = {
@@ -226,8 +239,9 @@ def main():
             "search": search_method,
             "top_items": args.top_items,
             "chunk_k": args.chunk_k,
-            "max_distance": MAX_DISTANCE if search_method == "dense" else None,
-            "embedding_model": "text-embedding-3-small" if search_method == "dense" else None,
+            "max_distance": MAX_DISTANCE if uses_dense else None,
+            "embedding_model": "text-embedding-3-small" if uses_dense else None,
+            "rrf_k": RRF_K if search_method == 'hybrid' else None,
         },
         "corpus": {**manifest["corpus"], "chunks_now": chunk_count},
         "dataset_sha256": manifest["splits"][args.split]["sha256"],

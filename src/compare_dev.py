@@ -16,7 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = ROOT / "eval" / "results"
 OUT_PATH = ROOT / "eval" / "dev-comparison.csv"
-METHODS = ["dense", "lexical"]
+METHODS = ["dense", "lexical", "hybrid"]
 
 FIELDS = ["method", "cases", "answerable", "hit@5", "mrr", "answerable_abstained",
           "no_evidence", "no_evidence_abstained", "mean_latency_ms", "git_commit", "source_file"]
