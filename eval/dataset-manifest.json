@@ -15,7 +15,7 @@
   "splits": {
     "dev": {
       "file": "eval/dev.jsonl",
-      "sha256": "6c9dbc3c2c51d3ad072b0327ec7a28fb8289f6332a49dcbb24c16a897f0d9f4c",
+      "sha256": "8c1482786a8aa92ab2b121e3045ba9ddbb81208c4573f43774532cdf55ebd768",
       "use": "tuning and comparison, any time",
       "cases": 30,
       "answerable": 24,
@@ -97,6 +97,16 @@
     "Test t03-t05 are Chinese queries against English articles (cross-language).",
     "scala-exercises.org item c974772389b0af75 is now a gambling ad page (domain resold); not used in any case.",
     "/save indexes new items into Chroma but not chunks_fts; run build_fts.py after new saves before a lexical/hybrid run (run_dev_eval.py stops on a count mismatch). Fix in /save if lexical or hybrid is selected."
+  ],
+  "label_changes": [
+    {
+      "date": "2026-11-09",
+      "split": "dev",
+      "id": "q24",
+      "change": "added 8432857d6ae8a00d (Deploy WAR to AWS EC2) to expected_item_ids",
+      "reason": "Article directly answers the question; the original label (from find_queries.jsonl, 10/24) listed only the 2 Heroku items I remembered. Decided by reading the article content, not by scores. Java EE 7 Tutorial contents page (8d3838e130953273) rejected: keyword match only, no deployment steps.",
+      "old_sha256": "6c9dbc3c2c51d3ad072b0327ec7a28fb8289f6332a49dcbb24c16a897f0d9f4c"
+    }
   ],
   "corpus_history": [
     {
