@@ -10,7 +10,8 @@ class LLMTimeOutException(Exception):
     pass
 
 
-def get_response(instructions: str, text: str, json_mode: bool = False):
+def get_response(instructions: str, text: str, json_mode: bool = False, on_usage=None):
+    """on_usage: optional callback, gets response.usage (input_tokens, output_tokens). Used by the Ask audit."""
     try:
         client = OpenAI()
         response = client.responses.create(
@@ -22,4 +23,6 @@ def get_response(instructions: str, text: str, json_mode: bool = False):
         )
     except APITimeoutError as e:
         raise LLMTimeOutException(str(e)) from e
+    if on_usage is not None and response.usage is not None:
+        on_usage(response.usage)
     return response.output_text

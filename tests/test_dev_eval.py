@@ -4,8 +4,10 @@ import chromadb
 import pytest
 
 from index import retrieve
-from run_dev_eval import (check_frozen, dense_abstain, evaluate_one, queries_path, reciprocal_rank, summarize,
-                          top_unique_items)
+import sqlite3
+
+from run_dev_eval import (check_frozen, dense_abstain, evaluate_one, filter_violations, queries_path,
+                          reciprocal_rank, summarize, top_unique_items)
 
 client = chromadb.EphemeralClient()
 
@@ -119,3 +121,59 @@ def test_check_frozen(tmp_path):
     cases.write_text('{"id": "q01", "query": "edited"}\n', encoding="utf-8")
     with pytest.raises(SystemExit):
         check_frozen("dev", cases, manifest)
+
+
+@pytest.fixture
+def items_db():
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("CREATE TABLE saved_items (id TEXT PRIMARY KEY, domain TEXT, saved_at TEXT)")
+    conn.executemany("INSERT INTO saved_items VALUES (?, ?, ?)", [
+        ("it1", "go.dev", "2026-10-12T09:00:00"),
+        ("it2", "go.dev", "2026-10-18T09:00:00"),
+        ("it3", "example.com", "2026-10-15T09:00:00"),
+    ])
+    yield conn
+    conn.close()
+
+
+def test_filter_violations_domain(items_db):
+    assert filter_violations(items_db, ["it1", "it2", "it3"], {"domain": "go.dev"}) == ["it3"]
+
+
+def test_filter_violations_date_range_is_inclusive(items_db):
+    assert filter_violations(items_db, ["it1", "it2", "it3"], {"since": 20261012, "until": 20261015}) == ["it2"]
+
+
+def test_filter_violations_unknown_item_counts(items_db):
+    assert filter_violations(items_db, ["it1", "ghost"], {"domain": "go.dev"}) == ["ghost"]
+
+
+def test_filter_violations_no_filters(items_db):
+    assert filter_violations(items_db, ["it3"], None) == []
+
+
+def test_filter_check_uses_all_returned_items(collection):
+    # Out-of-filter item at chunk position 8 (after the top 5 items) must still be caught.
+    search = lambda q, k, **f: retrieve(q, collection, k, embed=fake_embed)
+    row = {"id": "f1", "query": "q", "type": "filter", "filters": {"domain": "it1.com"},
+           "answerable": True, "expected_item_ids": ["it1"]}
+    seen = {}
+
+    def check(item_ids, filters):
+        seen["ids"] = item_ids
+        return [i for i in item_ids if i != "it1"]
+
+    result = evaluate_one(row, search, dense_abstain(), check_filters=check)
+    assert "it6" in seen["ids"]
+    assert "it6" in result["filter_violations"]
+
+
+def test_summary_counts_filter_cases():
+    results = [
+        {"answerable": True, "hit": True, "reciprocal_rank": 1.0, "abstained": False, "filter_violations": []},
+        {"answerable": True, "hit": True, "reciprocal_rank": 1.0, "abstained": False, "filter_violations": ["x"]},
+        {"answerable": True, "hit": True, "reciprocal_rank": 1.0, "abstained": False, "filter_violations": None},
+    ]
+    s = summarize(results)
+    assert (s["filter_cases"], s["filter_correct"]) == (2, 1)

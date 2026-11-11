@@ -10,6 +10,8 @@ Both split files must match the sha256 in eval/dataset-manifest.json (frozen on 
 
 Answerable cases  -> item-level Hit@5 and MRR (after removing duplicate items).
 No-evidence cases -> abstained or not (top distance > MAX_DISTANCE, or no result).
+Filter cases      -> every returned item is checked against SQLite saved_items
+                     (the source of truth), not against the chunk metadata.
 
 Writes one JSON line per case to eval/results/<date>_dev_eval.jsonl
 and prints a summary.
@@ -26,6 +28,7 @@ import chromadb
 
 from answers import MAX_DISTANCE
 from build_fts import fts_chunk_count, lexical_search
+from db import get_connection
 from hybrid_search import make_hybrid_search, RRF_K
 from index import COLLECTION_NAME, make_dense_search
 
@@ -86,8 +89,32 @@ def reciprocal_rank(retrieved: list[str], expected: list[str]) -> float:
     return 0.0
 
 
+def filter_violations(conn, item_ids: list[str], filters: dict) -> list[str]:
+    """Return the item ids that break the filters, using saved_items in SQLite.
+
+    Like a WHERE clause run the other way round: ask the DB for each item's domain and day,
+    then check them in Python. An item missing from the DB also counts as a violation.
+    """
+    if not filters or not item_ids:
+        return []
+    marks = ",".join("?" * len(item_ids))
+    rows = conn.execute(
+        f"SELECT id, domain, CAST(strftime('%Y%m%d', saved_at) AS INTEGER) AS saved_day "
+        f"FROM saved_items WHERE id IN ({marks})", item_ids).fetchall()
+    found = {r["id"]: r for r in rows}
+    bad = []
+    for item_id in item_ids:
+        r = found.get(item_id)
+        if (r is None
+                or (filters.get("domain") is not None and r["domain"] != filters["domain"])
+                or (filters.get("since") is not None and r["saved_day"] < filters["since"])
+                or (filters.get("until") is not None and r["saved_day"] > filters["until"])):
+            bad.append(item_id)
+    return bad
+
+
 def evaluate_one(row: dict, search, abstain, top_items: int = TOP_ITEMS, chunk_k: int = CHUNK_K,
-                 search_method='dense') -> dict:
+                 search_method='dense', check_filters=None) -> dict:
     start = time.perf_counter()
     chunks = search(row["query"], chunk_k, **(row["filters"] or {}))
     latency_ms = (time.perf_counter() - start) * 1000
@@ -108,7 +135,14 @@ def evaluate_one(row: dict, search, abstain, top_items: int = TOP_ITEMS, chunk_k
         "top_distance": top_distance,
         "abstained": abstained,
         "latency_ms": latency_ms,
+        # None = case has no filters (or no checker given). [] = filters held for every returned item.
+        "filter_violations": None,
     }
+
+    if row["filters"] and check_filters is not None:
+        # Check every returned item, not only the top 5: one out-of-filter item anywhere is a bug.
+        all_items = list(dict.fromkeys(c["item_id"] for c in chunks))
+        result["filter_violations"] = check_filters(all_items, row["filters"])
 
     if row["answerable"]:
         expected = row["expected_item_ids"]
@@ -129,6 +163,7 @@ def evaluate_one(row: dict, search, abstain, top_items: int = TOP_ITEMS, chunk_k
 def summarize(results: list[dict], top_items: int = TOP_ITEMS) -> dict:
     answerable = [r for r in results if r["answerable"]]
     no_evidence = [r for r in results if not r["answerable"]]
+    filtered = [r for r in results if r.get("filter_violations") is not None]
     n = len(answerable)
     return {
         "answerable": n,
@@ -138,6 +173,8 @@ def summarize(results: list[dict], top_items: int = TOP_ITEMS) -> dict:
         "answerable_abstained": sum(r["abstained"] for r in answerable),
         "no_evidence": len(no_evidence),
         "no_evidence_abstained": sum(r["abstained"] for r in no_evidence),
+        "filter_cases": len(filtered),
+        "filter_correct": sum(not r["filter_violations"] for r in filtered),
     }
 
 
@@ -158,6 +195,10 @@ def print_summary(results: list[dict], summary: dict, top_items: int, chunk_k: i
     print(f"\nanswerable {s['answerable']}: hit@{top_items}={s[f'hit@{top_items}']:.3f}  mrr={s['mrr']:.3f}  "
           f"(retrieval layer would refuse {s['answerable_abstained']})")
     print(f"no evidence {s['no_evidence']}: abstained {s['no_evidence_abstained']}/{s['no_evidence']}")
+    print(f"filter cases {s['filter_cases']}: all returned items inside filter {s['filter_correct']}/{s['filter_cases']}")
+    for r in results:
+        if r.get("filter_violations"):
+            print(f"      {r['id']} out-of-filter items {r['filter_violations']}")
 
 
 def dense_abstain(max_distance=MAX_DISTANCE):
@@ -209,10 +250,13 @@ def main():
         abstain = dense_abstain(MAX_DISTANCE)
 
     commit = git_commit()
+    conn = get_connection()
+    check_filters = lambda item_ids, filters: filter_violations(conn, item_ids, filters)
     run_start = time.perf_counter()
     results = [evaluate_one(row, search=search, abstain=abstain, top_items=args.top_items, chunk_k=args.chunk_k,
-                            search_method=search_method)
+                            search_method=search_method, check_filters=check_filters)
                for row in load_queries(path)]
+    conn.close()
     summary = summarize(results, args.top_items)
     print_summary(results, summary, args.top_items, args.chunk_k, chunk_count)
 

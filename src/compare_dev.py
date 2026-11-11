@@ -19,7 +19,8 @@ OUT_PATH = ROOT / "eval" / "dev-comparison.csv"
 METHODS = ["dense", "lexical", "hybrid"]
 
 FIELDS = ["method", "cases", "answerable", "hit@5", "mrr", "answerable_abstained",
-          "no_evidence", "no_evidence_abstained", "mean_latency_ms", "git_commit", "source_file"]
+          "no_evidence", "no_evidence_abstained", "filter_cases", "filter_correct",
+          "mean_latency_ms", "git_commit", "source_file"]
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -39,6 +40,8 @@ def result_file(method: str, day: str | None) -> Path:
 def method_row(method: str, rows: list[dict]) -> dict:
     answerable = [r for r in rows if r["answerable"]]
     no_evidence = [r for r in rows if not r["answerable"]]
+    # Result files before 11/10 have no filter_violations field -> filter columns stay empty.
+    filtered = [r for r in rows if r.get("filter_violations") is not None]
     n = len(answerable)
     return {
         "method": method,
@@ -49,6 +52,8 @@ def method_row(method: str, rows: list[dict]) -> dict:
         "answerable_abstained": sum(r["abstained"] for r in answerable),
         "no_evidence": len(no_evidence),
         "no_evidence_abstained": sum(r["abstained"] for r in no_evidence),
+        "filter_cases": len(filtered) if filtered else None,
+        "filter_correct": sum(not r["filter_violations"] for r in filtered) if filtered else None,
         "mean_latency_ms": round(sum(r["latency_ms"] for r in rows) / len(rows), 1) if rows else None,
     }
 
@@ -95,6 +100,7 @@ def main():
     for row in table:
         print(f"{row['method']:<8} hit@5={row['hit@5']} mrr={row['mrr']} "
               f"no-evidence abstained {row['no_evidence_abstained']}/{row['no_evidence']} "
+              f"filter ok {row['filter_correct']}/{row['filter_cases']} "
               f"latency {row['mean_latency_ms']} ms  ({row['git_commit']})")
     same, total = same_top5_count(rows_by_method)
     print(f"identical top-5 across methods: {same}/{total}")
