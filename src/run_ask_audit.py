@@ -98,7 +98,8 @@ def write_sheet(path: Path, rows: list[dict], model: str) -> None:
                   f"**Answer:** {r['answer']}", ""]
         for s in r["sources"]:
             excerpt = s["excerpt"].replace("\n", " ")
-            lines.append(f"- [{s['ref']}] `{s['item_id']}` {s['url']}  \n  > {excerpt[:600]}")
+            # Full excerpt: the model saw the whole chunk, so the auditor must too (11/10: [:600] hid the evidence).
+            lines.append(f"- [{s['ref']}] `{s['item_id']}` {s['url']}  \n  > {excerpt}")
         lines += ["", "- relevant: ", "- citation_supported: ", "- notes: ", ""]
     path.write_text("\n".join(lines), encoding="utf-8")
 

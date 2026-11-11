@@ -1,4 +1,4 @@
-method,cases,answerable,hit@5,mrr,answerable_abstained,no_evidence,no_evidence_abstained,mean_latency_ms,git_commit,source_file
-dense,30,24,1.0,0.951,0,6,5,314.2,8c0376a,eval/results/2026-11-07_dev_dense_eval.jsonl
-lexical,30,24,1.0,0.948,0,6,0,3.4,8c0376a,eval/results/2026-11-07_dev_lexical_eval.jsonl
-hybrid,30,24,1.0,0.972,0,6,5,287.1,8c0376a,eval/results/2026-11-07_dev_hybrid_eval.jsonl
+method,cases,answerable,hit@5,mrr,answerable_abstained,no_evidence,no_evidence_abstained,filter_cases,filter_correct,mean_latency_ms,git_commit,source_file
+dense,30,24,1.0,0.958,0,6,5,6,6,456.9,bbb1d92,eval/results/2026-11-10_dev_dense_eval.jsonl
+lexical,30,24,1.0,0.979,0,6,0,6,6,4.1,bbb1d92,eval/results/2026-11-10_dev_lexical_eval.jsonl
+hybrid,30,24,1.0,1.0,0,6,5,6,6,295.9,bbb1d92,eval/results/2026-11-10_dev_hybrid_eval.jsonl
