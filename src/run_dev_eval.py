@@ -225,6 +225,9 @@ def main():
     parser.add_argument("--split", choices=SPLIT_PATHS, default="dev")
     parser.add_argument("--final-test", action="store_true", help="unlock the final-test split (Sprint 4)")
     parser.add_argument("--search", choices=["dense", "lexical", "hybrid"], default="dense")
+    parser.add_argument("--max-distance", type=float, default=MAX_DISTANCE,
+                        help="abstain threshold for dense/hybrid (experiment only; production uses "
+                             "answers.MAX_DISTANCE)")
     args = parser.parse_args()
 
     path = queries_path(args.split, args.final_test)
@@ -239,7 +242,7 @@ def main():
 
     if search_method == "dense":
         search = make_dense_search(collection)
-        abstain = dense_abstain(MAX_DISTANCE)
+        abstain = dense_abstain(args.max_distance)
     elif search_method == "lexical":
         validate_fts_count(chunk_count)
         search = lexical_search
@@ -247,7 +250,7 @@ def main():
     else:
         validate_fts_count(chunk_count)
         search = make_hybrid_search(collection)
-        abstain = dense_abstain(MAX_DISTANCE)
+        abstain = dense_abstain(args.max_distance)
 
     commit = git_commit()
     conn = get_connection()
@@ -261,7 +264,10 @@ def main():
     print_summary(results, summary, args.top_items, args.chunk_k, chunk_count)
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
-    out = RESULTS_DIR / f"{date.today():%Y-%m-%d}_{args.split}_{search_method}_eval.jsonl"
+    # A non-default threshold gets its own file name, so it never replaces the baseline run
+    # (compare_dev.py only reads *_eval.jsonl).
+    suffix = "" if args.max_distance == MAX_DISTANCE else f"_maxd{args.max_distance}"
+    out = RESULTS_DIR / f"{date.today():%Y-%m-%d}_{args.split}_{search_method}_eval{suffix}.jsonl"
     with out.open("w", encoding="utf-8") as f:
         for r in results:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
@@ -283,7 +289,7 @@ def main():
             "search": search_method,
             "top_items": args.top_items,
             "chunk_k": args.chunk_k,
-            "max_distance": MAX_DISTANCE if uses_dense else None,
+            "max_distance": args.max_distance if uses_dense else None,
             "embedding_model": "text-embedding-3-small" if uses_dense else None,
             "rrf_k": RRF_K if search_method == 'hybrid' else None,
         },
