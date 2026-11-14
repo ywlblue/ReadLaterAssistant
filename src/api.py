@@ -11,13 +11,14 @@ from answers import answer, Source
 from chroma_config import setup_chroma
 from chunks import process_document
 from digest import digest
-from events import record_ask, update_feedback, connect_events
+from events import record_ask, update_feedback, connect_events, record_find
 from fetch import fetch_url
 from index import build_index
 from logging_config import setup_logging
 from model import LLMTimeOutException
 from schemas import SavedItemDigest, DigestParseError
 from storage import save_item, connect, record_fetch, record_digest, save_snapshot
+from tools import SearchHit, search_saved
 from urls import InvalidUrlError
 
 setup_logging()
@@ -71,6 +72,18 @@ class FeedbackResponse(BaseModel):
     status: str
 
 
+class FindRequest(BaseModel):
+    query: str
+    domain: str | None = None
+    since: int | None = None  # saved_day, e.g., 20261101 same as retrieve's saved_day
+    until: int | None = None
+
+
+class FindResponse(BaseModel):
+    request_id: str
+    hits: list[SearchHit]
+
+
 app = FastAPI()
 
 SAVE_MESSAGE = (
@@ -81,6 +94,8 @@ SAVE_MESSAGE = (
 )
 
 ASK_MESSAGE = "request_id=%(request_id)s path=/ask query_len=%(query_len)d latency_ms=%(latency_ms).2f"
+
+FIND_MESSAGE = "request_id=%(request_id)s path=/find query_len=%(query_len)d latency_ms=%(latency_ms).2f"
 
 
 @app.post("/save")
@@ -203,3 +218,21 @@ def feedback(request: FeedbackRequest) -> FeedbackResponse:
     if not updated:
         raise HTTPException(status_code=404, detail="Unknown request_id")
     return FeedbackResponse(status="ok")
+
+
+@app.post("/find")
+def find(request: FindRequest) -> FindResponse:
+    conn = connect_events()
+    try:
+        start = time.perf_counter()
+        hits = search_saved(query=request.query, collection=chroma_collection, connection=conn,
+                            domain=request.domain, since=request.since, until=request.until)
+        latency_ms = (time.perf_counter() - start) * 1000
+        request_id = str(uuid.uuid4())
+        record_find(conn, request_id, len(request.query), latency_ms, hits)
+        logger.info(FIND_MESSAGE, {"request_id": request_id,
+                                   "query_len": len(request.query),
+                                   "latency_ms": latency_ms})
+        return FindResponse(request_id=request_id, hits=hits)
+    finally:
+        conn.close()

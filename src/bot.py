@@ -4,8 +4,10 @@ import os
 import requests
 from dotenv import load_dotenv
 
-from api import SaveResponse, AskResponse
+from api import SaveResponse, AskResponse, FindResponse
 from logging_config import setup_logging
+from routing import route, USAGE
+from tools import MAX_DISTANCE
 
 load_dotenv()
 approved_from_id = os.environ["ACCEPT_BOT_FROM_ID"]
@@ -48,10 +50,10 @@ def get_updates(offset: int = None, timeout: int = 30):
                 continue
 
             if chat_id and text:
-                command, _, arg = text.partition(" ")  # "/ask Can Vault..." → "/ask", "Can Vault..."
-                handler = COMMANDS.get(command)
+                r = route(text)
+                handler = COMMANDS.get(r.command)
                 try:
-                    reply = handler(arg) if handler else handle_save(text)
+                    reply = handler(r.arg) if handler else USAGE
                 except Exception as e:
                     logger.error(str(e))
                     reply = f"Encounter an error: {e}"
@@ -129,10 +131,36 @@ def handle_feedback(request_id: str, feedback: str):
     return "ID not found"
 
 
+def handle_find(query: str):
+    response = requests.post(
+        "http://localhost:8000/find",
+        json={"query": query},
+        timeout=120,
+    )
+    find_response = FindResponse.model_validate_json(response.text)
+    hits = find_response.hits
+    if len(hits) == 0:
+        return "No saved item matched. Try more specific words."
+
+    def fmt(i, h):
+        return f"{i}. {h.title} ({h.saved_day})\n   {h.url}"
+
+    strong = [h for h in hits if h.distance <= MAX_DISTANCE]
+    weak = [h for h in hits if h.distance > MAX_DISTANCE]
+    lines = [fmt(i, h) for i, h in enumerate(strong, 1)]
+    if weak:
+        lines += ["", "Weaker matches:"] + [fmt(i, h) for i, h in enumerate(weak, len(strong) + 1)]
+    lines += ["", f"Request ID: {find_response.request_id}", "Reply /found ID or /missed ID"]
+    return "\n".join(lines)
+
+
 COMMANDS = {
     "/ask": handle_ask,
     "/found": handle_found,
     "/missed": handle_missed,
+    "save": handle_save,
+    "/find": handle_find,
+    "/review": lambda _: "Review is coming Saturday."
 }
 
 if __name__ == '__main__':
