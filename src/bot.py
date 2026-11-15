@@ -4,7 +4,7 @@ import os
 import requests
 from dotenv import load_dotenv
 
-from api import SaveResponse, AskResponse, FindResponse
+from api import SaveResponse, AskResponse, FindResponse, ReviewResponse
 from logging_config import setup_logging
 from routing import route, USAGE
 from tools import MAX_DISTANCE
@@ -154,13 +154,48 @@ def handle_find(query: str):
     return "\n".join(lines)
 
 
+def handle_review(_: str):
+    response = requests.post(
+        "http://localhost:8000/review",
+        timeout=120,
+    )
+    response.raise_for_status()
+    review_response = ReviewResponse.model_validate_json(response.text)
+    picks = review_response.picks
+    if len(picks) == 0:
+        return "Nothing to review right now. All recent items are opened or were suggested in the last 14 days."
+    lines = []
+    for i, pick in enumerate(picks, 1):
+        lines += [f"{i}. {pick.title or pick.url} ({pick.saved_day})",
+                  f"   {pick.url}",
+                  f"   Why: {pick.reason}",
+                  f"   ID: {pick.item_id}",
+                  ""]
+    lines += [f"Request ID: {review_response.request_id}", "Reply /opened ID to record opened"]
+    return "\n".join(lines)
+
+
+def handle_opened(item_id: str):
+    response = requests.post(
+        "http://localhost:8000/opened",
+        json={"item_id": item_id},
+        timeout=120,
+    )
+    if response.status_code == 200:
+        return "Marked as opened"
+    if response.status_code == 404:
+        return "Item ID not found"
+    response.raise_for_status()
+
+
 COMMANDS = {
     "/ask": handle_ask,
     "/found": handle_found,
     "/missed": handle_missed,
     "save": handle_save,
     "/find": handle_find,
-    "/review": lambda _: "Review is coming Saturday."
+    "/review": handle_review,
+    "/opened": handle_opened
 }
 
 if __name__ == '__main__':

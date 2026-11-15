@@ -54,6 +54,10 @@ def record_find(conn, request_id, query_len, latency_ms, hits: list[SearchHit]):
     record_request(conn, request_id, "find", query_len, latency_ms, not hits, [h.item_id for h in hits])
 
 
+def record_review_event(conn, request_id, query_len, latency_ms, picks: list[str]):
+    record_request(conn, request_id, "review", query_len, latency_ms, not picks, picks)
+
+
 def update_feedback(conn: sqlite3.Connection, request_id: str, feedback: str):
     cursor = conn.execute(
         "UPDATE request_events SET feedback = ?, feedback_at = ? WHERE request_id = ?",

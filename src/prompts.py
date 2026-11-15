@@ -31,6 +31,13 @@ Return valid JSON with this structure:
 """
 
 
+RECOMMENDATION_TEMPLATE = '''
+You write one short sentence (max 30 words) telling the user why this saved article
+is worth reading now. Use ONLY the title, summary and tags given. Do not add facts
+that are not in them. Use neutral tone, no marketing words. Return the sentence only, no quotes.
+'''
+
+
 def summary_prompt(num_sentences=2):
     return SUMMARY_TEMPLATE.format(num_sentences=num_sentences)
 
@@ -43,3 +50,7 @@ def digest_prompt(min_tags=3, max_tags=5):
 
 def query_prompt():
     return QUERY_TEMPLATE
+
+
+def recommendation_prompt():
+    return RECOMMENDATION_TEMPLATE

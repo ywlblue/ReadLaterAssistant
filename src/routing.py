@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-NEEDS_ARG = {"/find", "/ask", "/found", "/missed"}
+NEEDS_ARG = {"/find", "/ask", "/found", "/missed", "/opened"}
 NO_ARG = {"/review"}
 
 USAGE = """Commands:
@@ -8,7 +8,8 @@ USAGE = """Commands:
 /find <words>    find saved items
 /ask <question>  answer from saved items
 /review          suggest up to 3 unread items
-/found <id> | /missed <id>   feedback"""
+/found <id> | /missed <id>   feedback
+/opened <item_id> mark an item as opened"""
 
 
 @dataclass(frozen=True)

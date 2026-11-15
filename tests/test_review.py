@@ -1,11 +1,24 @@
-from datetime import datetime, timedelta, timezone
 import uuid
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from fetch import FetchResult
-from review import connect_review, select_review, record_review, record_opened
+from review import connect_review, select_review, record_review, record_opened, review_reason
+from schemas import SavedItemDigest
 from storage import connect, save_item, record_digest, record_fetch
+
+
+def fake_call_model_valid(instructions, query):
+    return "It's a great article!"
+
+
+def fake_call_model_error(instructions, query):
+    raise RuntimeError("LLM error")
+
+
+def fake_call_model_empty_response(instructions, query):
+    return ""
 
 
 def test_select_review_with_empty_db(tmp_path):
@@ -162,3 +175,31 @@ def test_record_opened_non_exist_item_id(tmp_path):
     conn = connect_review(str(tmp_path / "test.db"))
     with pytest.raises(ValueError):
         record_opened(conn, "123", datetime.now(timezone.utc))
+
+
+def test_review_reason_happy_path():
+    digest = SavedItemDigest(summary="Summary", tags=["travel", "tech", "future"], content_type="article")
+    reason = review_reason({"id": "123",
+                            "digest_json": digest.model_dump_json(),
+                            "saved_at": "2026-10-14T04:30:12.565184+00:00",
+                            "title": "A title"}, call_model=fake_call_model_valid)
+
+    assert reason == "It's a great article!"
+
+
+def test_review_reason_error():
+    digest = SavedItemDigest(summary="Summary", tags=["travel", "tech", "future"], content_type="article")
+    result = review_reason({"id": "123",
+                            "digest_json": digest.model_dump_json(),
+                            "saved_at": "2026-10-14T04:30:12.565184+00:00",
+                            "title": "A title"}, call_model=fake_call_model_error)
+    assert result == "Saved on 2026-10-14, not opened yet: Summary"
+
+
+def test_review_reason_empty_response():
+    digest = SavedItemDigest(summary="Summary 2", tags=["travel", "tech", "future"], content_type="article")
+    result = review_reason({"id": "123",
+                            "digest_json": digest.model_dump_json(),
+                            "saved_at": "2026-10-15T04:30:12.565184+00:00",
+                            "title": "A title"}, call_model=fake_call_model_empty_response)
+    assert result == "Saved on 2026-10-15, not opened yet: Summary 2"

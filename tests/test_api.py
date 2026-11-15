@@ -7,7 +7,9 @@ from starlette.testclient import TestClient
 import api
 from fetch import FetchResult
 from schemas import DigestParseError, SavedItemDigest
-from storage import connect
+from events import connect_events
+from review import connect_review
+from storage import connect, save_item, record_digest
 
 
 def test_save_empty_url(monkeypatch, tmp_path):
@@ -240,4 +242,103 @@ def test_save_content(monkeypatch, tmp_path):
     mock_fetch.assert_called_once()
 
 
+@pytest.fixture
+def review_context(monkeypatch, tmp_path):
+    """Real SQLite in tmp_path, seeded with 2 digested items and 1 digest_failed item.
+    The LLM is never called: api.review_reason is replaced by a fake."""
+    db_path = str(tmp_path / "test.db")
+    connect(db_path)  # saved_items table
+    connect_events(db_path)  # request_events table (+ kind migration)
+    conn = connect_review(db_path)
 
+    digest = SavedItemDigest(summary="A post about caching.",
+                             tags=["cache", "backend", "scale"], content_type="article")
+    seeded = []
+    for url in ["https://a.com/one", "https://b.com/two"]:
+        item, _ = save_item(conn, url)
+        record_digest(conn, item["id"], digest, None)
+        seeded.append(item["id"])
+    failed, _ = save_item(conn, "https://c.com/broken")
+    record_digest(conn, failed["id"], None, "schema_error")  # must never be picked
+    conn.close()
+
+    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+    monkeypatch.setattr(api, "review_reason", lambda row: f"fake reason for {row['id']}")
+
+    with TestClient(api.app) as client:
+        yield SimpleNamespace(client=client, db_path=db_path, seeded=seeded,
+                              failed_id=failed["id"])
+
+
+def test_review_returns_digested_items(review_context):
+    ctx = review_context
+    response = ctx.client.post("/review")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert sorted(p["item_id"] for p in body["picks"]) == sorted(ctx.seeded)
+    assert all(p["reason"] == f"fake reason for {p['item_id']}" for p in body["picks"])
+
+    conn = connect_review(ctx.db_path)
+    history = conn.execute("SELECT item_id FROM review_recommendations WHERE request_id = ?",
+                           (body["request_id"],)).fetchall()
+    event = conn.execute("SELECT kind FROM request_events WHERE request_id = ?",
+                         (body["request_id"],)).fetchone()
+    conn.close()
+    assert sorted(r["item_id"] for r in history) == sorted(ctx.seeded)
+    assert event["kind"] == "review"
+
+
+def test_review_second_call_respects_cooldown(review_context):
+    ctx = review_context
+    ctx.client.post("/review")
+    response = ctx.client.post("/review")
+
+    assert response.status_code == 200
+    assert response.json()["picks"] == []
+
+
+def test_review_empty_db_returns_zero_picks(monkeypatch, tmp_path):
+    db_path = str(tmp_path / "empty.db")
+    connect(db_path)
+    connect_events(db_path)
+    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+
+    with TestClient(api.app) as client:
+        response = client.post("/review")
+
+    assert response.status_code == 200
+    assert response.json()["picks"] == []
+
+    conn = connect_review(db_path)
+    event = conn.execute("SELECT kind, insufficient_evidence FROM request_events").fetchone()
+    conn.close()
+    assert event["kind"] == "review"
+    assert event["insufficient_evidence"] == 1
+
+
+def test_opened_with_valid_id(monkeypatch, tmp_path):
+    db_path = str(tmp_path / "test.db")
+    conn = connect(db_path)
+    row, _ = save_item(conn, "https://example.com/article")
+    conn.close()
+    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+
+    with TestClient(api.app) as client:
+        response = client.post("/opened", json={"item_id": row["id"]})
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "ok"
+
+
+def test_opened_with_invalid_id(monkeypatch, tmp_path):
+    db_path = str(tmp_path / "test.db")
+    conn = connect(db_path)
+    row, _ = save_item(conn, "https://example.com/article")
+    conn.close()
+    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+
+    with TestClient(api.app) as client:
+        response = client.post("/opened", json={"item_id": "fake12345"})
+
+    assert response.status_code == 404

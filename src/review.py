@@ -1,7 +1,13 @@
+import logging
 import sqlite3
 from datetime import datetime, timedelta
 
 from db import get_connection
+from model import get_response
+from prompts import recommendation_prompt
+from schemas import SavedItemDigest
+
+logger = logging.getLogger(__name__)
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS item_opens (
@@ -57,3 +63,17 @@ def record_opened(conn, item_id: str, now: datetime):
             raise ValueError("Item id not found")
         conn.execute("INSERT INTO item_opens (item_id, opened_at) VALUES (? , ?)",
                      (item_id, now.isoformat()))
+
+
+def review_reason(row: dict, call_model=get_response) -> str:
+    saved_item_digest = SavedItemDigest.model_validate_json(row["digest_json"])
+    fallback = f"Saved on {row['saved_at'][:10]}, not opened yet: {saved_item_digest.summary}"
+    text = (f"Title: {row['title']}\n"
+            f"Summary: {saved_item_digest.summary}\n"
+            f"Tags: {', '.join(saved_item_digest.tags)}")
+    try:
+        reason = (call_model(recommendation_prompt(), text) or "").strip()
+        return reason or fallback
+    except Exception as e:
+        logger.warning("review_reason failed item_id=%s error=%s", row["id"], e)
+        return fallback

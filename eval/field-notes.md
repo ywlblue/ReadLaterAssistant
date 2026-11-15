@@ -33,7 +33,8 @@ Only record what actually happened; do not make up activity.
 - 2026-11-13: 11 items are `fetched` but never digested (no `digest_json`), e.g. 31f6.
   They are indexed, so Find/Ask can return them, but `select_review` only picks
   `digested` items, so /review will never suggest them. TODO: run batch_digest on them.
-
+- 2026-11-14: nature.com book review (d41586-026-03224-7) digest_failed schema_error,
+  content_type empty. Resent via bot → digested. Evidence for F2 one-retry (planned 11/15).
 ## Case studies
 
 ### 2026-11-13 | Vague "king" query, and the Indian-democracy "hub" article

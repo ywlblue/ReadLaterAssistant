@@ -29,4 +29,13 @@ def test_unknown_command():
     assert route("/xyz") == Route("usage")
 
 
-def test_url_inside_sentence():  assert route("look at https://a.com") == Route("usage")
+def test_url_inside_sentence():
+    assert route("look at https://a.com") == Route("usage")
+
+
+def test_opened():
+    assert route("/opened abc") == Route("/opened", "abc")
+
+
+def test_opened_no_arg():
+    assert route("/opened") == Route("usage")

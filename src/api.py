@@ -1,6 +1,7 @@
 import logging
 import time
 import uuid
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -11,11 +12,12 @@ from answers import answer, Source
 from chroma_config import setup_chroma
 from chunks import process_document
 from digest import digest
-from events import record_ask, update_feedback, connect_events, record_find
+from events import record_ask, update_feedback, connect_events, record_find, record_review_event
 from fetch import fetch_url
 from index import build_index
 from logging_config import setup_logging
 from model import LLMTimeOutException
+from review import select_review, connect_review, review_reason, record_review, record_opened
 from schemas import SavedItemDigest, DigestParseError
 from storage import save_item, connect, record_fetch, record_digest, save_snapshot
 from tools import SearchHit, search_saved
@@ -84,6 +86,27 @@ class FindResponse(BaseModel):
     hits: list[SearchHit]
 
 
+class ReviewPick(BaseModel):
+    item_id: str
+    title: str | None
+    url: str
+    saved_day: str  # "2026-10-14"
+    reason: str
+
+
+class ReviewResponse(BaseModel):
+    request_id: str
+    picks: list[ReviewPick]
+
+
+class OpenedRequest(BaseModel):
+    item_id: str
+
+
+class OpenedResponse(BaseModel):
+    status: str
+
+
 app = FastAPI()
 
 SAVE_MESSAGE = (
@@ -96,6 +119,8 @@ SAVE_MESSAGE = (
 ASK_MESSAGE = "request_id=%(request_id)s path=/ask query_len=%(query_len)d latency_ms=%(latency_ms).2f"
 
 FIND_MESSAGE = "request_id=%(request_id)s path=/find query_len=%(query_len)d latency_ms=%(latency_ms).2f"
+
+REVIEW_MESSAGE = "request_id=%(request_id)s path=/review picks=%(picks)d latency_ms=%(latency_ms).2f"
 
 
 @app.post("/save")
@@ -236,3 +261,42 @@ def find(request: FindRequest) -> FindResponse:
         return FindResponse(request_id=request_id, hits=hits)
     finally:
         conn.close()
+
+
+@app.post("/review")
+def review() -> ReviewResponse:
+    connect_events().close()  # TODO(lifespan): ensure request_events exists; remove after startup schema init
+    conn = connect_review()
+    try:
+        start = time.perf_counter()
+        request_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc)
+        selected_reviews = select_review(conn, now)
+        picks = [ReviewPick(item_id=selected["id"], title=selected["title"],
+                            url=selected["url"], saved_day=selected["saved_at"][:10],
+                            reason=review_reason(dict(selected)))
+                 for selected in selected_reviews]
+        ids = [p.item_id for p in picks]
+        latency_ms = (time.perf_counter() - start) * 1000
+        record_review(conn, request_id, ids, now)
+        record_review_event(conn, request_id, query_len=0, latency_ms=latency_ms, picks=ids)
+        logger.info(REVIEW_MESSAGE, {"request_id": request_id,
+                                     "picks": len(ids),
+                                     "latency_ms": latency_ms})
+        return ReviewResponse(request_id=request_id, picks=picks)
+    finally:
+        conn.close()
+
+
+@app.post("/opened")
+def opened(request: OpenedRequest) -> OpenedResponse:
+    conn = connect_review()
+    try:
+        record_opened(conn, request.item_id, datetime.now(timezone.utc))
+        return OpenedResponse(status="ok")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Item ID not found")
+    finally:
+        conn.close()
+
+
