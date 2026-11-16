@@ -30,7 +30,7 @@ def ctx(monkeypatch, tmp_path):
     db_path = str(tmp_path / "test.db")
 
     # Point api and process_document at the same temp DB
-    monkeypatch.setattr(api, "connect", lambda: connect(db_path))
+    monkeypatch.setattr(api, "get_connection", lambda: connect(db_path))
     real_connect_chunks = chunks.connect_chunks
     monkeypatch.setattr(chunks, "connect_chunks", lambda db=None: real_connect_chunks(db_path))
 

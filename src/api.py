@@ -12,16 +12,17 @@ from pydantic import BaseModel
 from answers import answer, Answer, Source
 from chroma_config import setup_chroma
 from chunks import process_document
+from db import get_connection
 from digest import digest
-from events import record_ask, update_feedback, connect_events, record_find, record_review_event
+from events import record_ask, update_feedback, record_find, record_review_event
 from fetch import fetch_url
 from index import build_index
 from init_db import init_db
 from logging_config import setup_logging
 from model import LLMTimeOutException
-from review import select_review, connect_review, review_reason, record_review, record_opened
+from review import select_review, review_reason, record_review, record_opened
 from schemas import SavedItemDigest, DigestParseError
-from storage import save_item, connect, record_fetch, record_digest, save_snapshot
+from storage import save_item, record_fetch, record_digest, save_snapshot
 from tools import SearchHit, search_saved
 from urls import InvalidUrlError
 
@@ -145,11 +146,11 @@ def save_url(item: SaveRequest) -> SaveResponse:
     }
     unexpected_error = None
     index_warning = None
+
+    conn = get_connection()
     try:
         if not item.url:
             raise HTTPException(status_code=400, detail="Missing URL")
-
-        conn = connect()
         saved_item, created = save_item(conn, item.url, item.origin_type.name)
         result = saved_item
 
@@ -223,6 +224,8 @@ def save_url(item: SaveRequest) -> SaveResponse:
         ) from e
 
     finally:
+        if conn is not None:
+            conn.close()
         log_data["latency_ms"] = (time.perf_counter() - start) * 1000
         level = logging.ERROR if log_data["status"] >= 500 else logging.INFO
 
@@ -245,8 +248,11 @@ def ask(request: AskRequest) -> AskResponse:
                         sources=[], insufficient_evidence=True, layer="error")
     latency_ms = (time.perf_counter() - start) * 1000
     request_id = str(uuid.uuid4())
-    conn = connect_events()
-    record_ask(conn, request_id, len(request.query), latency_ms, result)
+    conn = get_connection()
+    try:
+        record_ask(conn, request_id, len(request.query), latency_ms, result)
+    finally:
+        conn.close()
     logger.info(ASK_MESSAGE, {"request_id": request_id,
                               "query_len": len(request.query),
                               "latency_ms": latency_ms})
@@ -255,9 +261,12 @@ def ask(request: AskRequest) -> AskResponse:
 
 @app.post("/feedback")
 def feedback(request: FeedbackRequest) -> FeedbackResponse:
+    conn = get_connection()
     request_id = request.request_id
-    conn = connect_events()
-    row, updated = update_feedback(conn, request_id, request.feedback.name)
+    try:
+        row, updated = update_feedback(conn, request_id, request.feedback.name)
+    finally:
+        conn.close()
     if not updated:
         raise HTTPException(status_code=404, detail="Unknown request_id")
     return FeedbackResponse(status="ok")
@@ -265,7 +274,7 @@ def feedback(request: FeedbackRequest) -> FeedbackResponse:
 
 @app.post("/find")
 def find(request: FindRequest) -> FindResponse:
-    conn = connect_events()
+    conn = get_connection()
     try:
         start = time.perf_counter()
         try:
@@ -287,7 +296,7 @@ def find(request: FindRequest) -> FindResponse:
 
 @app.post("/review")
 def review() -> ReviewResponse:
-    conn = connect_review()
+    conn = get_connection()
     try:
         start = time.perf_counter()
         request_id = str(uuid.uuid4())
@@ -311,7 +320,7 @@ def review() -> ReviewResponse:
 
 @app.post("/opened")
 def opened(request: OpenedRequest) -> OpenedResponse:
-    conn = connect_review()
+    conn = get_connection()
     try:
         record_opened(conn, request.item_id, datetime.now(timezone.utc))
         return OpenedResponse(status="ok")

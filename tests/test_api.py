@@ -14,7 +14,7 @@ from storage import connect, save_item, record_digest
 
 def test_save_empty_url(monkeypatch, tmp_path):
     conn = Mock()
-    monkeypatch.setattr(api, "connect", Mock(return_value=conn))
+    monkeypatch.setattr(api, "get_connection", Mock(return_value=conn))
 
     with TestClient(api.app) as client:
         response = client.post("/save", json={"url": ""})
@@ -56,7 +56,7 @@ def save_context(monkeypatch):
     mock_digest = Mock(return_value=summary)
     mock_record_digest = Mock(return_value=digested_item)
 
-    monkeypatch.setattr(api, "connect", Mock(return_value=conn))
+    monkeypatch.setattr(api, "get_connection", Mock(return_value=conn))
     monkeypatch.setattr(api, "save_item", mock_save)
     monkeypatch.setattr(api, "fetch_url", mock_fetch)
     monkeypatch.setattr(api, "digest", mock_digest)
@@ -173,7 +173,7 @@ def test_save_llm_return_invalid_json(monkeypatch):
     )
     mock_record_digest = Mock(return_value=failed_item)
 
-    monkeypatch.setattr(api, "connect", Mock(return_value=conn))
+    monkeypatch.setattr(api, "get_connection", Mock(return_value=conn))
     monkeypatch.setattr(api, "save_item", mock_save)
     monkeypatch.setattr(api, "fetch_url", mock_fetch)
     monkeypatch.setattr(api, "save_snapshot", mock_save_snapshot)
@@ -218,7 +218,7 @@ def test_save_content(monkeypatch, tmp_path):
     )
 
     # Return lambda for connection instead of using pre-initialized connection
-    monkeypatch.setattr(api, "connect", lambda: connect(str(tmp_path / "test.db")))
+    monkeypatch.setattr(api, "get_connection", lambda: connect(str(tmp_path / "test.db")))
     monkeypatch.setattr(api, "fetch_url", mock_fetch)
     monkeypatch.setattr(api, "save_snapshot", mock_save_snapshot)
     monkeypatch.setattr(api, "digest", mock_digest)
@@ -262,7 +262,7 @@ def review_context(monkeypatch, tmp_path):
     record_digest(conn, failed["id"], None, "schema_error")  # must never be picked
     conn.close()
 
-    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+    monkeypatch.setattr(api, "get_connection", lambda: connect_review(db_path))
     monkeypatch.setattr(api, "review_reason", lambda row: f"fake reason for {row['id']}")
 
     with TestClient(api.app) as client:
@@ -302,7 +302,7 @@ def test_review_empty_db_returns_zero_picks(monkeypatch, tmp_path):
     db_path = str(tmp_path / "empty.db")
     connect(db_path)
     connect_events(db_path)
-    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+    monkeypatch.setattr(api, "get_connection", lambda: connect_review(db_path))
 
     with TestClient(api.app) as client:
         response = client.post("/review")
@@ -322,7 +322,7 @@ def test_opened_with_valid_id(monkeypatch, tmp_path):
     conn = connect(db_path)
     row, _ = save_item(conn, "https://example.com/article")
     conn.close()
-    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+    monkeypatch.setattr(api, "get_connection", lambda: connect_review(db_path))
 
     with TestClient(api.app) as client:
         response = client.post("/opened", json={"item_id": row["id"]})
@@ -336,7 +336,7 @@ def test_opened_with_invalid_id(monkeypatch, tmp_path):
     conn = connect(db_path)
     row, _ = save_item(conn, "https://example.com/article")
     conn.close()
-    monkeypatch.setattr(api, "connect_review", lambda: connect_review(db_path))
+    monkeypatch.setattr(api, "get_connection", lambda: connect_review(db_path))
 
     with TestClient(api.app) as client:
         response = client.post("/opened", json={"item_id": "fake12345"})
