@@ -342,3 +342,13 @@ def test_opened_with_invalid_id(monkeypatch, tmp_path):
         response = client.post("/opened", json={"item_id": "fake12345"})
 
     assert response.status_code == 404
+
+
+def test_startup_creates_tables():
+    """No setup at all: lifespan alone must create the tables in the default DB."""
+    with TestClient(api.app) as client:
+        response = client.post("/review")
+
+    assert response.status_code == 200
+    assert response.json()["picks"] == []
+

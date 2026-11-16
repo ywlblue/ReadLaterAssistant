@@ -1,6 +1,7 @@
 import logging
 import time
 import uuid
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
@@ -15,6 +16,7 @@ from digest import digest
 from events import record_ask, update_feedback, connect_events, record_find, record_review_event
 from fetch import fetch_url
 from index import build_index
+from init_db import init_db
 from logging_config import setup_logging
 from model import LLMTimeOutException
 from review import select_review, connect_review, review_reason, record_review, record_opened
@@ -27,6 +29,16 @@ setup_logging()
 logger = logging.getLogger(__name__)
 
 chroma_collection = setup_chroma()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    init_db()  # runs once, before the first request
+    yield  # the app serves requests here
+    # code after yield would run at shutdown (nothing to do yet)
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 class SavedAtOrigin(str, Enum):
@@ -106,8 +118,6 @@ class OpenedRequest(BaseModel):
 class OpenedResponse(BaseModel):
     status: str
 
-
-app = FastAPI()
 
 SAVE_MESSAGE = (
     "request_id=%(request_id)s path=/save "
@@ -277,7 +287,6 @@ def find(request: FindRequest) -> FindResponse:
 
 @app.post("/review")
 def review() -> ReviewResponse:
-    connect_events().close()  # TODO(lifespan): ensure request_events exists; remove after startup schema init
     conn = connect_review()
     try:
         start = time.perf_counter()
@@ -310,5 +319,3 @@ def opened(request: OpenedRequest) -> OpenedResponse:
         raise HTTPException(status_code=404, detail="Item ID not found")
     finally:
         conn.close()
-
-
