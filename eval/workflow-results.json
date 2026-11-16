@@ -1,0 +1,359 @@
+{
+  "run_at": "2026-11-16T02:10:14.642464+00:00",
+  "git_commit": "b838b1a",
+  "cases_file": "eval/workflow-cases.jsonl",
+  "passed": 20,
+  "total": 20,
+  "by_category": {
+    "repeated_review": {
+      "passed": 2,
+      "total": 2
+    },
+    "invalid_args": {
+      "passed": 2,
+      "total": 2
+    },
+    "missing_evidence": {
+      "passed": 2,
+      "total": 2
+    },
+    "model_failure": {
+      "passed": 5,
+      "total": 5
+    },
+    "unsupported_input": {
+      "passed": 1,
+      "total": 1
+    },
+    "valid_command": {
+      "passed": 3,
+      "total": 3
+    },
+    "fetch_failure": {
+      "passed": 1,
+      "total": 1
+    },
+    "timeout": {
+      "passed": 3,
+      "total": 3
+    },
+    "tool_failure": {
+      "passed": 1,
+      "total": 1
+    }
+  },
+  "results": [
+    {
+      "id": "W01",
+      "category": "repeated_review",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/review",
+          "reply": "1. Caching basics (2026-10-17)\n   https://example0.com/item0\n   Why: Fake reason from stored summary.\n   ID: item00\n\n2. Load balancing (2026-10-18)\n   https://example1.com/item1\n   Why: Fake reason from stored summary.\n   ID: item01\n\nRequest ID: dfe1ba95-1a4c-4493-8ba2-55993faea114\nReply /opened ID to record opened"
+        },
+        {
+          "send": "/review",
+          "reply": "Nothing to review right now. All recent items are opened or were suggested in the last 14 days."
+        }
+      ],
+      "model_calls": 2,
+      "latency_ms": 8.9
+    },
+    {
+      "id": "W02",
+      "category": "invalid_args",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/opened does-not-exist",
+          "reply": "Item ID not found"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 3.7
+    },
+    {
+      "id": "W03",
+      "category": "missing_evidence",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/ask what is my passport number",
+          "reply": "No saved item has enough evidence to answer this.\n\n\nRequest ID: 08a2348e-5df5-4132-814b-01c418773ab1\nReply /found ID or /missed ID"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 4.2
+    },
+    {
+      "id": "W04",
+      "category": "model_failure",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "https://new.com/article",
+          "reply": "Saved: Offline https://new.com/article\nError: invalid_json\nSend the same url again to retry."
+        }
+      ],
+      "model_calls": 2,
+      "latency_ms": 5.3
+    },
+    {
+      "id": "W05",
+      "category": "unsupported_input",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "hello there",
+          "reply": "Commands:\n<url>            save a link (just paste it)\n/find <words>    find saved items\n/ask <question>  answer from saved items\n/review          suggest up to 3 unread items\n/found <id> | /missed <id>   feedback\n/opened <item_id> mark an item as opened"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 2.5
+    },
+    {
+      "id": "W06",
+      "category": "valid_command",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "https://new.com/a",
+          "reply": "Saved: Offline https://new.com/a\nSummary: Fake summary sentence one. Fake sentence two.\nTags: ['fake', 'offline', 'test']"
+        },
+        {
+          "send": "https://new.com/a",
+          "reply": "Saved: Offline https://new.com/a\nSummary: Fake summary sentence one. Fake sentence two.\nTags: ['fake', 'offline', 'test']"
+        }
+      ],
+      "model_calls": 1,
+      "latency_ms": 4.5
+    },
+    {
+      "id": "W07",
+      "category": "fetch_failure",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "https://gone.com/x",
+          "reply": "Fetch failure: http_404"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 4.1
+    },
+    {
+      "id": "W08",
+      "category": "model_failure",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "https://new.com/b",
+          "reply": "Saved: Offline https://new.com/b\nSummary: Fake summary sentence one. Fake sentence two.\nTags: ['fake', 'offline', 'test']"
+        }
+      ],
+      "model_calls": 2,
+      "latency_ms": 3.7
+    },
+    {
+      "id": "W09",
+      "category": "timeout",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "https://new.com/c",
+          "reply": "Saved: Offline https://new.com/c\nError: llm_timeout\nSend the same url again to retry."
+        }
+      ],
+      "model_calls": 1,
+      "latency_ms": 4.2
+    },
+    {
+      "id": "W10",
+      "category": "model_failure",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "https://new.com/d",
+          "reply": "Saved: Offline https://new.com/d\nError: model_error: RuntimeError\nSend the same url again to retry."
+        }
+      ],
+      "model_calls": 1,
+      "latency_ms": 4.1
+    },
+    {
+      "id": "W11",
+      "category": "valid_command",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/ask how does caching work",
+          "reply": "Fake grounded answer [1].\n\n[1] https://cache.dev/basics\n\nRequest ID: 4aab4fe0-e867-43f4-825c-fcaba28a8174\nReply /found ID or /missed ID"
+        },
+        {
+          "send": "/found 4aab4fe0-e867-43f4-825c-fcaba28a8174",
+          "reply": "Recorded"
+        }
+      ],
+      "model_calls": 1,
+      "latency_ms": 15.6
+    },
+    {
+      "id": "W12",
+      "category": "timeout",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/ask how does caching work",
+          "reply": "The model did not respond in time. Please try again.\n\n\nRequest ID: 719186f1-a15f-4d2b-bb45-1bbd47ef8fc1\nReply /found ID or /missed ID"
+        }
+      ],
+      "model_calls": 1,
+      "latency_ms": 8.3
+    },
+    {
+      "id": "W13",
+      "category": "model_failure",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/ask how does caching work",
+          "reply": "The model returned an invalid response.\n\n\nRequest ID: d3e850c1-a734-4e45-b6f0-29736e616542\nReply /found ID or /missed ID"
+        }
+      ],
+      "model_calls": 2,
+      "latency_ms": 5.6
+    },
+    {
+      "id": "W14",
+      "category": "model_failure",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/ask how does caching work",
+          "reply": "The model returned an invalid response.\n\n\nRequest ID: adfdc1c2-7fbb-4da5-a337-78855658a766\nReply /found ID or /missed ID"
+        }
+      ],
+      "model_calls": 2,
+      "latency_ms": 5.6
+    },
+    {
+      "id": "W15",
+      "category": "missing_evidence",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/ask what is my passport number",
+          "reply": "No saved item has enough evidence to answer this.\n\n\nRequest ID: e339f61a-f01c-4027-bb09-82fcb3c2c7c9\nReply /found ID or /missed ID"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 5.4
+    },
+    {
+      "id": "W16",
+      "category": "valid_command",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/find balancing traffic",
+          "reply": "1. Load balancing (20261018)\n   https://lb.dev/intro\n\nWeaker matches:\n2. Caching basics (20261017)\n   https://cache.dev/basics\n\nRequest ID: be36f88d-a05f-49c8-9379-54009ad8337d\nReply /found ID or /missed ID"
+        },
+        {
+          "send": "/missed be36f88d-a05f-49c8-9379-54009ad8337d",
+          "reply": "Recorded"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 7.2
+    },
+    {
+      "id": "W17",
+      "category": "tool_failure",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/find caching",
+          "reply": "Error: Search is not available right now."
+        },
+        {
+          "send": "/ask how does caching work",
+          "reply": "Search is not available right now. Please try again later.\n\n\nRequest ID: c803e47a-c83a-4d92-a526-930e7d474993\nReply /found ID or /missed ID"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 5.7
+    },
+    {
+      "id": "W18",
+      "category": "invalid_args",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/find",
+          "reply": "Commands:\n<url>            save a link (just paste it)\n/find <words>    find saved items\n/ask <question>  answer from saved items\n/review          suggest up to 3 unread items\n/found <id> | /missed <id>   feedback\n/opened <item_id> mark an item as opened"
+        },
+        {
+          "send": "/found not-a-request",
+          "reply": "ID not found"
+        },
+        {
+          "send": "https://",
+          "reply": "Error: Invalid URL: https://"
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 3.4
+    },
+    {
+      "id": "W19",
+      "category": "repeated_review",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/review",
+          "reply": "1. Old pick (2026-10-19)\n   https://example2.com/item2\n   Why: Saved on 2026-10-19, not opened yet: Old pick summary.\n   ID: item02\n\n2. Never picked (2026-10-20)\n   https://example3.com/item3\n   Why: Saved on 2026-10-20, not opened yet: Never picked summary.\n   ID: item03\n\nRequest ID: 9e8da130-1258-4801-ac87-79fed468c271\nReply /opened ID to record opened"
+        }
+      ],
+      "model_calls": 2,
+      "latency_ms": 4.2
+    },
+    {
+      "id": "W20",
+      "category": "timeout",
+      "passed": true,
+      "errors": [],
+      "replies": [
+        {
+          "send": "/review",
+          "reply": "The server took too long to reply. Please try again."
+        },
+        {
+          "send": "/ask how does caching work",
+          "reply": "The server took too long to reply. Please try again."
+        }
+      ],
+      "model_calls": 0,
+      "latency_ms": 2.7
+    }
+  ]
+}
