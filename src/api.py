@@ -8,7 +8,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
-from answers import answer, Source
+from answers import answer, Answer, Source
 from chroma_config import setup_chroma
 from chunks import process_document
 from digest import digest
@@ -169,6 +169,9 @@ def save_url(item: SaveRequest) -> SaveResponse:
                 err_msg = "llm_timeout"
             except DigestParseError as parsing_err:
                 err_msg = parsing_err.reason
+            except Exception as model_err:  # provider/API error: keep the item and its text, retry later
+                logger.exception("digest failed item_id=%s", result["id"])
+                err_msg = f"model_error: {type(model_err).__name__}"
             result = record_digest(conn, result["id"], summary, err_msg)
 
         log_data["item_status"] = result["status"]
@@ -224,7 +227,12 @@ def save_url(item: SaveRequest) -> SaveResponse:
 @app.post("/ask")
 def ask(request: AskRequest) -> AskResponse:
     start = time.perf_counter()
-    result = answer(request.query, chroma_collection)
+    try:
+        result = answer(request.query, chroma_collection)
+    except Exception:  # embedding/Chroma/model failure: controlled reply, still recorded as an event
+        logger.exception("ask failed")
+        result = Answer(answer="Search is not available right now. Please try again later.",
+                        sources=[], insufficient_evidence=True, layer="error")
     latency_ms = (time.perf_counter() - start) * 1000
     request_id = str(uuid.uuid4())
     conn = connect_events()
@@ -250,8 +258,12 @@ def find(request: FindRequest) -> FindResponse:
     conn = connect_events()
     try:
         start = time.perf_counter()
-        hits = search_saved(query=request.query, collection=chroma_collection, connection=conn,
-                            domain=request.domain, since=request.since, until=request.until)
+        try:
+            hits = search_saved(query=request.query, collection=chroma_collection, connection=conn,
+                                domain=request.domain, since=request.since, until=request.until)
+        except Exception as e:
+            logger.exception("find failed")
+            raise HTTPException(status_code=503, detail="Search is not available right now.") from e
         latency_ms = (time.perf_counter() - start) * 1000
         request_id = str(uuid.uuid4())
         record_find(conn, request_id, len(request.query), latency_ms, hits)

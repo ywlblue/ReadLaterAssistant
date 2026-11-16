@@ -78,8 +78,11 @@ def test_answer_success_with_ref_2(collection):
 
 
 def test_answer_failed_with_invalid_ref(collection):
-    with pytest.raises(ValueError):
-        answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_invalid_ref)
+    # An unknown source ref is malformed output: one retry, then a controlled model_error (not an exception).
+    result = answer("Test question", collection, embed=fake_embed, call_model=fake_call_model_invalid_ref)
+    assert result.sources == []
+    assert result.insufficient_evidence
+    assert result.layer == "model_error"
 
 
 def test_answer_failed_with_invalid_json(collection):

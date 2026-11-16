@@ -2,7 +2,7 @@ from pydantic import BaseModel, ValidationError
 
 from embeddings import embed_texts
 from index import retrieve, set_up_chroma
-from model import get_response
+from model import get_response, LLMTimeOutException
 from prompts import query_prompt
 
 # 10/26: answerable top1 max 0.544, no-evidence min 0.585 (n=15). Re-check after 20-q baseline.
@@ -57,21 +57,26 @@ def answer(query, collection, k=5, embed=embed_texts, call_model=get_response, m
         Return the answer as JSON.
         """
 
+    # One malformed-output retry. An unknown source ref is malformed output too. Timeouts are not retried.
     for attempt in range(2):
-        raw_response = call_model(prompt, question, json_mode=True)
+        try:
+            raw_response = call_model(prompt, question, json_mode=True)
+        except LLMTimeOutException:
+            return Answer(answer="The model did not respond in time. Please try again.",
+                          sources=[], insufficient_evidence=True, layer="model_timeout",
+                          top_distance=results[0]["distance"])
         try:
             llm_result = LLMAnswer.model_validate_json(raw_response)
-            break
+            if all(ref in context_map for ref in llm_result.used_refs):
+                break
         except ValidationError:
-            if attempt == 1:
-                return Answer(answer="The model returned an invalid response.",
-                              sources=[], insufficient_evidence=True,
-                              layer="model_error",
-                              top_distance=results[0]["distance"])
+            pass
+        if attempt == 1:
+            return Answer(answer="The model returned an invalid response.",
+                          sources=[], insufficient_evidence=True,
+                          layer="model_error",
+                          top_distance=results[0]["distance"])
     used_refs = list(dict.fromkeys(llm_result.used_refs))
-
-    if any(ref not in context_map for ref in used_refs):
-        raise ValueError("LLM returned an unknown source reference")
 
     if not used_refs:
         return Answer(answer=llm_result.answer, sources=[], layer="model",

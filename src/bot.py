@@ -50,14 +50,35 @@ def get_updates(offset: int = None, timeout: int = 30):
                 continue
 
             if chat_id and text:
-                r = route(text)
-                handler = COMMANDS.get(r.command)
-                try:
-                    reply = handler(r.arg) if handler else USAGE
-                except Exception as e:
-                    logger.error(str(e))
-                    reply = f"Encounter an error: {e}"
-                send_message(reply, chat_id)
+                send_message(dispatch(text), chat_id)
+
+
+def dispatch(text: str) -> str:
+    """One user message in, one reply out. Shared by the bot loop and eval_workflow."""
+    r = route(text)
+    handler = COMMANDS.get(r.command)
+    try:
+        return handler(r.arg) if handler else USAGE
+    except requests.Timeout:
+        logger.error("API timeout command=%s", r.command)
+        return "The server took too long to reply. Please try again."
+    except requests.ConnectionError:
+        logger.error("API unreachable command=%s", r.command)
+        return "Cannot reach the server. Is the API running?"
+    except Exception as e:
+        logger.error(str(e))
+        return f"Encounter an error: {e}"
+
+
+def api_error(response) -> str | None:
+    """A short reply for a non-200 API response, or None when the response is OK."""
+    if response.status_code == 200:
+        return None
+    try:
+        detail = response.json().get("detail")
+    except ValueError:
+        detail = None
+    return f"Error: {detail or f'server returned {response.status_code}'}"
 
 
 def send_message(text: str, chat_id: str):
@@ -80,6 +101,8 @@ def handle_save(text: str):
         json={"url": text},
         timeout=120,
     )
+    if err := api_error(response):
+        return err
     save_response = SaveResponse.model_validate_json(response.text)
     text = None
     if save_response.status == "digested":
@@ -103,6 +126,8 @@ def handle_ask(query: str):
         json={"query": query},
         timeout=120,
     )
+    if err := api_error(response):
+        return err
     ask_response = AskResponse.model_validate_json(response.text)
     lines = [ask_response.answer, ""]
     for source in ask_response.sources:
@@ -137,6 +162,8 @@ def handle_find(query: str):
         json={"query": query},
         timeout=120,
     )
+    if err := api_error(response):
+        return err
     find_response = FindResponse.model_validate_json(response.text)
     hits = find_response.hits
     if len(hits) == 0:
@@ -159,7 +186,8 @@ def handle_review(_: str):
         "http://localhost:8000/review",
         timeout=120,
     )
-    response.raise_for_status()
+    if err := api_error(response):
+        return err
     review_response = ReviewResponse.model_validate_json(response.text)
     picks = review_response.picks
     if len(picks) == 0:

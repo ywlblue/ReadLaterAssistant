@@ -5,6 +5,11 @@ from openai import APITimeoutError, OpenAI, NOT_GIVEN
 
 load_dotenv()
 
+# Every LLM call is bounded. The SDK default is 600 s with 2 silent retries, which would
+# outlast the bot's 120 s HTTP timeout. Worst cases: /review = 3 x 25 s, /ask = 2 x 25 s + embedding.
+LLM_TIMEOUT_SECONDS = 25
+LLM_MAX_RETRIES = 0
+
 
 class LLMTimeOutException(Exception):
     pass
@@ -13,7 +18,7 @@ class LLMTimeOutException(Exception):
 def get_response(instructions: str, text: str, json_mode: bool = False, on_usage=None):
     """on_usage: optional callback, gets response.usage (input_tokens, output_tokens). Used by the Ask audit."""
     try:
-        client = OpenAI()
+        client = OpenAI(timeout=LLM_TIMEOUT_SECONDS, max_retries=LLM_MAX_RETRIES)
         response = client.responses.create(
             model=os.environ["OPENAI_MODEL"],
             instructions=instructions,
