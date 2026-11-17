@@ -1,6 +1,6 @@
 import pytest
 
-from urls import InvalidUrlError, make_item_id, normalize_url
+from readlater.urls import InvalidUrlError, make_item_id, normalize_url
 
 
 @pytest.mark.parametrize("raw", [

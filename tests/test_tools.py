@@ -4,8 +4,8 @@ import uuid
 import chromadb
 import pytest
 
-from storage import connect
-from tools import search_saved, list_saves
+from readlater.storage import connect
+from readlater.tools import search_saved, list_saves
 
 client = chromadb.EphemeralClient()
 NEAR, MID, FAR = [1.0, 0, 0], [1.0, 1.0, 0], [0.3, 1.0, 0]

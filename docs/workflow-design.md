@@ -6,7 +6,7 @@ Left for M3: spot-check 3 review reasons against their summaries.
 
 ## Review: what to resurface
 
-Code: `select_review` in `src/review.py`.
+Code: `select_review` in `readlater/review.py`.
 
 1. Pool = the 30 newest `digested` items (`saved_at DESC, id`).
 2. Drop items I marked as opened.
@@ -42,7 +42,7 @@ This is business history: it tells review what was already suggested. It is
   same input always gives the same output. Easy to test.
 - The LLM will only write the one-line reason, from the stored digest.
 - If the reason call fails, review still returns the pick with a fallback reason
-  built from the stored summary (`review_reason` in `src/review.py`, case W19).
+  built from the stored summary (`review_reason` in `readlater/review.py`, case W19).
 
 ## Time handling
 
@@ -108,7 +108,7 @@ What the user sees when something fails:
 
 ## Offline workflow cases
 
-- Cases: `eval/workflow-cases.jsonl` (20). Runner: `python src/eval_workflow.py`.
+- Cases: `eval/workflow-cases.jsonl` (20). Runner: `python -m readlater.evals.eval_workflow`.
   Results: `eval/workflow-results.json`. 11/15: 20/20 pass.
 - Each message goes through the same path as the real bot:
   `bot.dispatch(text)` → `route()` → bot handler → FastAPI (`TestClient`) → storage / model.

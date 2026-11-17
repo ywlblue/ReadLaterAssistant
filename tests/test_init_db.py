@@ -1,5 +1,5 @@
-from db import get_connection
-from init_db import init_db
+from readlater.db import get_connection
+from readlater.init_db import init_db
 
 
 def test_init_db_creates_all_tables(tmp_path):

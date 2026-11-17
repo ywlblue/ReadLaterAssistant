@@ -3,8 +3,8 @@ from pathlib import Path
 import pytest
 import requests
 
-from fetch import MAX_BYTES, Page, fetch_url
-from storage import connect, record_fetch, save_item
+from readlater.fetch import MAX_BYTES, Page, fetch_url
+from readlater.storage import connect, record_fetch, save_item
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

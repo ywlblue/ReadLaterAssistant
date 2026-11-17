@@ -6,12 +6,12 @@ import chromadb
 import pytest
 from starlette.testclient import TestClient
 
-import api
-import chunks
-import index
-from fetch import FetchResult
-from schemas import SavedItemDigest, DigestParseError
-from storage import connect
+from readlater import api
+from readlater import chunks
+from readlater import index
+from readlater.fetch import FetchResult
+from readlater.schemas import SavedItemDigest, DigestParseError
+from readlater.storage import connect
 
 URL = "https://example.com/henry-viii"
 # Longer than chunk_size (1000) so it splits into several chunks

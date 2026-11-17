@@ -1,6 +1,6 @@
 import pytest
 
-import db
+from readlater import db
 
 
 @pytest.fixture(autouse=True)

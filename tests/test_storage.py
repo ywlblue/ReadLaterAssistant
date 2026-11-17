@@ -1,7 +1,7 @@
 import pytest
 
-from storage import connect, count_items, save_item, save_snapshot
-from urls import InvalidUrlError
+from readlater.storage import connect, count_items, save_item, save_snapshot
+from readlater.urls import InvalidUrlError
 
 
 def test_same_url_twice_gives_same_id_and_one_row(tmp_path):

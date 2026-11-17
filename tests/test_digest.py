@@ -1,8 +1,8 @@
 import pytest
 
-from digest import digest
-from model import LLMTimeOutException
-from schemas import DigestParseError
+from readlater.digest import digest
+from readlater.model import LLMTimeOutException
+from readlater.schemas import DigestParseError
 
 
 def test_digest_get_not_json_response():

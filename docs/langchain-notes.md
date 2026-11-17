@@ -1,6 +1,6 @@
-Python Version: src/digest.py + src/prompts.py
+Python Version: readlater/digest.py + readlater/prompts.py
 
-LangChain Version: src/digest_langchain.py
+LangChain Version: readlater/scripts/digest_langchain.py
 
 1. With LangChain, two prompts run in parallel, while in the pure Python version, two prompts run in sequential order.
 2. With LangChain, switching to a different provider only changes one line (`ChatOpenAI(...)`), while the raw version needs a different SDK, client and client method. Switching models within the same provider is a config change in both versions.

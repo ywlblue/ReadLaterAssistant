@@ -3,10 +3,10 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from fetch import FetchResult
-from review import connect_review, select_review, record_review, record_opened, review_reason
-from schemas import SavedItemDigest
-from storage import connect, save_item, record_digest, record_fetch
+from readlater.fetch import FetchResult
+from readlater.review import connect_review, select_review, record_review, record_opened, review_reason
+from readlater.schemas import SavedItemDigest
+from readlater.storage import connect, save_item, record_digest, record_fetch
 
 
 def fake_call_model_valid(instructions, query):

@@ -1,4 +1,4 @@
-from routing import route, Route
+from readlater.routing import route, Route
 
 
 def test_bare_url_is_save():

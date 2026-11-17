@@ -1,6 +1,6 @@
 # Chunking
 
-Code: `src/chunks.py`. Table: `chunks`. No embeddings here; Friday's index reads chunks from this table.
+Code: `readlater/chunks.py`. Table: `chunks`. No embeddings here; Friday's index reads chunks from this table.
 
 ## Strategy
 
@@ -27,7 +27,7 @@ sha256(f"{item_id}:{strategy}:{chunk_index}:{content_sha256}")
 
 ## Re-run check (Oct 22)
 
-Ran `python src/chunks.py` twice on 5 items. Both runs: 112 chunks, same count per item. No duplicate chunk text within an item. Chunk length 348–999.
+Ran `python -m readlater.chunks` twice on 5 items. Both runs: 112 chunks, same count per item. No duplicate chunk text within an item. Chunk length 348–999.
 
 | Item | Page type | Chars | Chunks |
 |---|---|---|---|

@@ -4,12 +4,12 @@ from unittest.mock import Mock
 import pytest
 from starlette.testclient import TestClient
 
-import api
-from fetch import FetchResult
-from schemas import DigestParseError, SavedItemDigest
-from events import connect_events
-from review import connect_review
-from storage import connect, save_item, record_digest
+from readlater import api
+from readlater.fetch import FetchResult
+from readlater.schemas import DigestParseError, SavedItemDigest
+from readlater.events import connect_events
+from readlater.review import connect_review
+from readlater.storage import connect, save_item, record_digest
 
 
 def test_save_empty_url(monkeypatch, tmp_path):

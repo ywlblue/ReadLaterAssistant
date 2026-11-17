@@ -3,7 +3,7 @@ import json
 import chromadb
 import pytest
 
-from answers import answer
+from readlater.answers import answer
 
 client = chromadb.EphemeralClient()
 

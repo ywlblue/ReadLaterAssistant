@@ -21,8 +21,8 @@ Milestone notes and test evidence: [docs/milestones/M0.md](docs/milestones/M0.md
    - `ACCEPT_BOT_FROM_ID` (your Telegram user ID: send the bot any message,
      then read `message.from.id` from `getUpdates`)
    - optional `READLATER_DB` (default `data/readlater.db`)
-4. Terminal 1: `uvicorn api:app --app-dir src --reload`
-5. Terminal 2: `python src/bot.py`
+4. Terminal 1: `uvicorn readlater.api:app --reload`
+5. Terminal 2: `python -m readlater.bot`
 6. Send a link to the bot. Expected reply: `Saved: <title>`, summary and tags.
 
 Offline tests: `pytest` (no network, no API key needed).

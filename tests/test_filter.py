@@ -1,7 +1,7 @@
 import chromadb
 import pytest
 
-from index import retrieve
+from readlater.index import retrieve
 
 client = chromadb.EphemeralClient()
 

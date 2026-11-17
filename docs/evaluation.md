@@ -3,7 +3,7 @@
 ## Dataset provenance
 
 Source of truth: `eval/dataset-manifest.json`. Check it with
-`python src/audit_manifest.py` (read-only; no search, no scoring).
+`python -m readlater.evals.audit_manifest` (read-only; no search, no scoring).
 
 ### Split
 - 50 cases, frozen 2026-11-03 (commit aff57af): 30 dev / 20 final test.
@@ -74,14 +74,14 @@ All metrics run on the **dev split only** (30 cases). No LLM judge.
 - **Latency:** mean time per query, including the embedding API call.
 - **Cost:** estimated tokens × price. Recorded in each `*_eval.run.json`.
 
-Command: `python src/run_dev_eval.py --search dense|lexical|hybrid`
+Command: `python -m readlater.evals.run_dev_eval --search dense|lexical|hybrid`
 Each run saves per-question results (`.jsonl`) and a run record (`.run.json`:
 config, corpus version, dataset sha256, git commit, elapsed time, cost).
-Summary table: `python src/compare_dev.py` → `eval/dev-comparison.csv`.
+Summary table: `python -m readlater.evals.compare_dev` → `eval/dev-comparison.csv`.
 
 ## Manual Ask rubric
 
-Used for the 10-case Ask audit (`src/run_ask_audit.py`). I rate each answer by hand.
+Used for the 10-case Ask audit (`readlater/evals/run_ask_audit.py`). I rate each answer by hand.
 
 - **relevant:** yes = answers the question. partial = on topic but incomplete. no = off topic or wrong.
 - **citation_supported:** yes = every claim is in a cited excerpt. partial = some claims are not.
