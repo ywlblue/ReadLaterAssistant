@@ -16,7 +16,8 @@ Milestone notes and test evidence: [docs/milestones/M0.md](docs/milestones/M0.md
    `python3.12 -m venv .venv && source .venv/bin/activate`
 2. `pip install -r requirements.txt`
 3. Copy `.env.example` to `.env` and fill in:
-   - `OPENAI_API_KEY`, `OPENAI_MODEL` (we use `gpt-4o`)
+   - `OPENAI_API_KEY`, `OPENAI_MODEL` (we use `gpt-6-luna`)
+   - `OPENAI_REASONING_EFFORT=none` (reasoning models only; leave it out for gpt-4o)
    - `TELEGRAM_BOT_TOKEN` (from @BotFather, `/newbot`)
    - `ACCEPT_BOT_FROM_ID` (your Telegram user ID: send the bot any message,
      then read `message.from.id` from `getUpdates`)
@@ -104,9 +105,10 @@ Captured on 2026-10-17 before the JSON-mode fix.
 
 ## Model Choice
 
-- Model: `gpt-4o` through the OpenAI Responses API, with JSON mode on
-  (`text.format = json_object`).
-- Why JSON mode: on 5 fixed articles (2026-10-12), prompt-only returned valid
+- Model: `gpt-6-luna` (reasoning effort `none`) through the OpenAI Responses API, with JSON mode on
+  (`text.format = json_object`). Switched from `gpt-4o` on 2026-11-16 because gpt-4o leaves the API
+  on 2027-01-14; comparison in [docs/evaluation.md](docs/evaluation.md).
+- Why JSON mode (measured with gpt-4o): on 5 fixed articles (2026-10-12), prompt-only returned valid
   digests for 2/5; the other 3 wrapped the JSON in a markdown code block.
   JSON mode returned 5/5 valid digests.
 - Evidence:

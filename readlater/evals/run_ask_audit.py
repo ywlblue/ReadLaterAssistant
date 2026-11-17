@@ -31,7 +31,8 @@ load_dotenv()
 AUDIT_IDS = ["q06", "q07", "q08", "q09", "q10", "q11", "q14", "q01", "q29", "q23"]
 
 # USD per 1M tokens. Check the OpenAI pricing page if the model changes.
-PRICES = {"gpt-4o": {"input": 2.50, "output": 10.00}}
+PRICES = {"gpt-4o": {"input": 2.50, "output": 10.00},
+          "gpt-6-luna": {"input": 0.10, "output": 0.50}}
 
 
 def audit_one(row: dict, collection) -> dict:
@@ -109,6 +110,7 @@ def main():
     by_id = {r["id"]: r for r in load_queries(QUERIES_PATH)}
     collection = open_collection()
     model = os.environ.get("OPENAI_MODEL", "unknown")
+    effort = os.environ.get("OPENAI_REASONING_EFFORT") or "not set"
 
     rows = []
     for case_id in AUDIT_IDS:
@@ -123,10 +125,10 @@ def main():
         for r in rows:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
     md = RESULTS_DIR / f"{stem}.md"
-    write_sheet(md, rows, model)
+    write_sheet(md, rows, f"{model}, reasoning effort={effort}")
 
     latencies = sorted(r["latency_ms"] for r in rows)
-    print(f"\nmodel={model}  mean latency {sum(latencies) / len(latencies):.0f} ms  "
+    print(f"\nmodel={model}  reasoning effort={effort}  mean latency {sum(latencies) / len(latencies):.0f} ms  "
           f"max {latencies[-1]:.0f} ms  est cost ${cost_usd(rows, model)} for {len(rows)} asks")
     print(f"saved {jsonl.relative_to(ROOT)}\nsaved {md.relative_to(ROOT)}  <- fill this in by hand")
 

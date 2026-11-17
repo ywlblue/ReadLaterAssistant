@@ -126,6 +126,38 @@ Embedding cost per dev run: ~423 tokens (~$0.000008). Effectively free.
 
 Files: `eval/results/2026-11-10_dev_ask_audit.{jsonl,md}`.
 
+### Model switch: gpt-4o → gpt-6-luna (2026-11-16)
+
+Why: OpenAI shuts down gpt-4o in the API on 2027-01-14 and names gpt-6-luna as the replacement.
+Same 10 dev cases, same retrieval (dense, threshold 0.6), same prompt. Only the answer model changed.
+
+| | gpt-4o (11/10) | gpt-6-luna, reasoning effort `none` (11/16) |
+|---|---|---|
+| Relevant | 10/10 | 10/10 |
+| Citation supported | 10/10 | 10/10 |
+| Mean latency | 1.8 s | 3.3 s |
+| Max latency | 3.1 s | 8.0 s (q06, q07) |
+| Input tokens / ask | ~1.3k | ~1.3k |
+| Cost (10 asks) | $0.040 | $0.0018 |
+
+No-evidence fixtures (`eval/no_evidence.jsonl`, 5 cases): 4/5 refused, was 5/5 on 10/26.
+- The miss is the QUIC handshake question (same question as q17, top distance 0.585, so retrieval does not refuse).
+- Luna's answer says the context does not explain the handshake, but it still cites `[1]`.
+  The refuse rule only checks for empty `used_refs`, so the reply is not flagged as insufficient evidence.
+- The answer text is honest; the flag is wrong. This is the planned model-layer fix (see "When to revisit").
+  Not fixed today.
+
+Notes:
+- One run per model. Latency is about 2x slower but far below the 25 s timeout.
+- Prices: $0.10 / $0.50 per 1M tokens (input / output), from pricing write-ups, not checked on my bill yet.
+- Settings: `OPENAI_MODEL=gpt-6-luna`, `OPENAI_REASONING_EFFORT=none` in `.env` (`readlater/model.py`).
+  `low` was not tried.
+- Run on the code of this commit (parent `c0ef72b`). Embedding model unchanged, so the Find results above still hold.
+- Digests saved before 11/16 were written by gpt-4o and were not regenerated.
+- Offline checks after the switch: pytest 128 passed, workflow cases 20/20.
+
+Files: `eval/results/2026-11-16_dev_ask_audit.{jsonl,md}`, `eval/results/2026-11-16_no_evidence_max_distance_0.6.jsonl`.
+
 ## Development experiments (in order)
 
 | Date | Change | Result | Kept? |
@@ -136,6 +168,7 @@ Files: `eval/results/2026-11-10_dev_ask_audit.{jsonl,md}`.
 | 11/9 | Fixed q24 gold label (added the AWS WAR article) | Dense MRR 0.951 → 0.958 | Yes |
 | 11/10 | Filter correctness checked for every returned item | 6/6 for all methods | Yes |
 | 11/11 | Threshold 0.6 → 0.58 (one change, failure cluster: q17) | Fixed q17, but wrongly refused q10 | **No, keep 0.6** |
+| 11/16 | Answer model gpt-4o → gpt-6-luna (effort `none`) | Ask audit 10/10 and 10/10; ~20x cheaper; ~2x slower; QUIC no-evidence case no longer refused | Yes (gpt-4o shuts down 2027-01-14) |
 
 Details: `eval/results/2026-11-04_disagreements.md`, `2026-11-08_hybrid-failures.md`,
 `2026-11-11_threshold-0.58.md`.
@@ -194,7 +227,7 @@ Details: `eval/results/2026-11-04_disagreements.md`, `2026-11-08_hybrid-failures
 | Find | top 5 distinct items (from the top 30 chunks) |
 | Ask context | top 5 chunks |
 | Refuse rule | top-1 distance > 0.6, or the model returns empty `used_refs` |
-| Answer model | gpt-4o, JSON mode |
+| Answer model | gpt-6-luna, reasoning effort `none`, JSON mode (since 11/16; gpt-4o before) |
 
 Hybrid stays in the code (`--search hybrid`) as a candidate. It is not the default.
 

@@ -1,0 +1,5 @@
+{"query": "Could the U.S. Democrats win the presidential election in 2028?", "top1_distance": 0.6290926337242126, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}
+{"query": "How does QUIC’s handshake work?", "top1_distance": 0.5851578712463379, "insufficient_evidence": false, "layer": null, "answer": "The provided context does not explain how QUIC’s handshake works. It only says that DNS over QUIC has privacy properties similar to DNS over TLS and latency characteristics similar to DNS over UDP [1]."}
+{"query": "How do I configure a Kubernetes Ingress?", "top1_distance": 0.6980667114257812, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}
+{"query": "Who won the 2026 World Cup final?", "top1_distance": 0.8267440795898438, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}
+{"query": "How do I bake sourdough bread?", "top1_distance": 0.7829128503799438, "insufficient_evidence": true, "layer": "retrieval", "answer": "No saved item has enough evidence to answer this."}
